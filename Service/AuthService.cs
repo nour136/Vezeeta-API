@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using Domain;
 using Domain.DTOs.AuthDTOs;
 using Domain.Models;
@@ -32,10 +32,10 @@ namespace Service
         public async Task<ResponseModel<AuthDTO>> RegisterAsync<TRegisterDTO>(TRegisterDTO model, string role) where TRegisterDTO : RegisterDTO
         {
             if (await unitOfWork.AuthRepository.EmailExistAsync(model.Email))
-                return new ResponseModel<AuthDTO> { Success = false, Message = "Email is already registered" };
+                return new ResponseModel<AuthDTO> { Success = false, Message = "Email is already registered", ErrorType = ErrorType.Conflict };
 
             if (await unitOfWork.AuthRepository.UserNameExistAsync(model.Username))
-                return new ResponseModel<AuthDTO> { Success = false, Message = "Username is already registered" };
+                return new ResponseModel<AuthDTO> { Success = false, Message = "Username is already registered", ErrorType = ErrorType.Conflict };
 
             var imgUrl = await imageService.ValidateImage(model.ImageFile);
             if (imgUrl is null)
@@ -73,7 +73,7 @@ namespace Service
                         Email = user.Email,
                         ExpiresOn = jwtSecurityToken.ValidTo,
                         IsAuthenticated = true,
-                        Roles = new List<string> { "Doctor" },
+                        Roles = new List<string> { role },
                         Token = new JwtSecurityTokenHandler().WriteToken(jwtSecurityToken),
                         Username = user.UserName
                     }
@@ -92,7 +92,7 @@ namespace Service
 
             if (user is null || !await unitOfWork.AuthRepository.CheckPasswordAsync(user, model.Password))
             {
-                return new ResponseModel<AuthDTO> { Message = "Invalid credentials!" };
+                return new ResponseModel<AuthDTO> { Message = "Invalid credentials!", ErrorType = ErrorType.Unauthorized };
             }
 
             var jwtSecurityToken = await CreateJwtToken(user);
@@ -119,7 +119,7 @@ namespace Service
             var user = await unitOfWork.AuthRepository.GetUserByIdAsync(model.Id);
 
             if (user is null)
-                return new ResponseModel<AuthDTO> { Message = $"this ID: {model.Id} doesn't exist" };
+                return new ResponseModel<AuthDTO> { Message = $"this ID: {model.Id} doesn't exist", ErrorType = ErrorType.NotFound };
 
             mapper.Map(model, user);
             
@@ -178,7 +178,7 @@ namespace Service
 
             if (user is null)
             {
-                return new ResponseModel<AuthDTO> { Message = $"this ID: {id} doesn't exist" };
+                return new ResponseModel<AuthDTO> { Message = $"this ID: {id} doesn't exist", ErrorType = ErrorType.NotFound };
             }
 
             return await unitOfWork.AuthRepository.DeleteAsync(user);

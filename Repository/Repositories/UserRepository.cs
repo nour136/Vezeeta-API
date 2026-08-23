@@ -1,4 +1,4 @@
-﻿using Domain.Models;
+using Domain.Models;
 using Domain;
 using Microsoft.AspNetCore.Identity;
 using System;
@@ -66,7 +66,7 @@ namespace Repository.Repositories
             }
             catch (DbUpdateException)
             {
-                return new ResponseModel<AuthDTO> { Message = "Something went wrong." };
+                return new ResponseModel<AuthDTO> { Message = "Something went wrong.", ErrorType = ErrorType.Unexpected };
             }
 
             return new ResponseModel<AuthDTO> { Message = "Deleted successfully", Success = true };

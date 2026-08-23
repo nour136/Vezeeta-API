@@ -2,6 +2,7 @@ using Domain.DTOs.AdminDTOs;
 using Domain.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Vezeeta.API.Extensions;
 
 namespace Vezeeta.API.Controllers
 {
@@ -24,10 +25,7 @@ namespace Vezeeta.API.Controllers
 
             var result = await discountCodeService.AddDiscountCodeAsync(codeDTO);
 
-            if (!result.Success)
-                return BadRequest(result);
-
-            return Ok(result);
+            return result.ToCreatedResult();
         }
 
         [HttpGet("getAllCodes")]
@@ -35,10 +33,7 @@ namespace Vezeeta.API.Controllers
         {
             var result = await discountCodeService.GetAllCodesAsync(search, page, pageSize);
 
-            if (!result.Success)
-                return BadRequest(result);
-
-            return Ok(result);
+            return result.ToActionResult();
         }
 
         [HttpPut("deactivateCoupon/id={codeId}")]
@@ -46,10 +41,7 @@ namespace Vezeeta.API.Controllers
         {
             var result = await discountCodeService.DeactivateCodeAsync(codeId);
 
-            if (!result.Success)
-                return BadRequest(result);
-
-            return Ok(result);
+            return result.ToActionResult();
         }
 
         [HttpPut("deleteCoupon/id={codeId}")]
@@ -57,10 +49,7 @@ namespace Vezeeta.API.Controllers
         {
             var result = await discountCodeService.DeleteCodeAsync(codeId);
 
-            if (!result.Success)
-                return BadRequest(result);
-
-            return Ok(result);
+            return result.ToActionResult();
         }
     }
 }

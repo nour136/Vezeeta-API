@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Service;
+using Vezeeta.API.Extensions;
 
 namespace Vezeeta.API.Controllers
 {
@@ -29,10 +30,7 @@ namespace Vezeeta.API.Controllers
 
             var result = await authService.RegisterAsync(model, "Patient");
 
-            if (!result.Success)
-                return BadRequest(result);
-
-            return Ok(result);
+            return result.ToCreatedResult();
         }
 
         [HttpPost("login")]
@@ -44,12 +42,12 @@ namespace Vezeeta.API.Controllers
             var result = await authService.LoginAsync(model);
 
             if (!result.Success)
-                return BadRequest(result);
+                return result.ToActionResult();
 
             if (result.Data.Roles.Contains("Patient"))
-                return Ok(result);
-            else
-                return BadRequest(new ResponseModel<AuthDTO> { Message = "Invalid role!" });
+                return result.ToActionResult();
+
+            return new ResponseModel<AuthDTO> { Message = "Invalid role!", ErrorType = ErrorType.Forbidden }.ToActionResult();
         }
 
         [Authorize(Roles = "Patient")]
@@ -58,10 +56,7 @@ namespace Vezeeta.API.Controllers
         {
             var result = await patientService.GetAllAppointmentsAsync(search, page, pageSize);
 
-            if (!result.Success)
-                return BadRequest(result);
-
-            return Ok(result);
+            return result.ToActionResult();
         }
 
         [Authorize(Roles = "Patient")]
@@ -72,10 +67,7 @@ namespace Vezeeta.API.Controllers
 
             var result = await patientService.BookAppointmentAsync(userId, timeId);
 
-            if (!result.Success)
-                return BadRequest(result);
-
-            return Ok(result);
+            return result.ToCreatedResult();
         }
 
         [Authorize(Roles = "Patient")]
@@ -86,10 +78,7 @@ namespace Vezeeta.API.Controllers
 
             var result = await patientService.GetAllBookingsAsync(userId, page, pageSize);
 
-            if (!result.Success)
-                return BadRequest(result);
-
-            return Ok(result);
+            return result.ToActionResult();
         }
 
         [Authorize(Roles = "Patient")]
@@ -100,10 +89,7 @@ namespace Vezeeta.API.Controllers
 
             var result = await patientService.CancelBookingAsync(userId, bookingId);
 
-            if (!result.Success)
-                return BadRequest(result);
-
-            return Ok(result);
+            return result.ToActionResult();
         }
     }
 }

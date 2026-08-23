@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using Domain;
 using Domain.DTOs.AdminDTOs;
 using Domain.Repositories;
@@ -50,12 +50,12 @@ namespace Service
             var patient = await unitOfWork.AuthRepository.GetUserByIdAsync(id);
 
             if (patient is null)
-                return new ResponseModel<PatientDTO> { Message = "Invalid ID!" };
+                return new ResponseModel<PatientDTO> { Message = "Invalid ID!", ErrorType = ErrorType.NotFound };
 
             var roles = await unitOfWork.AuthRepository.GetRolesAsync(patient);
 
             if (!roles.Contains("Patient"))
-                return new ResponseModel<PatientDTO> { Message = "Invalid role!" };
+                return new ResponseModel<PatientDTO> { Message = "Invalid role!", ErrorType = ErrorType.NotFound };
 
             var patientDTO = mapper.Map<PatientDTO>(patient);
 

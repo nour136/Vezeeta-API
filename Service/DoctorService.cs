@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using Domain;
 using Domain.DTOs.DoctorDTOs;
 using Domain.Enums;
@@ -48,10 +48,10 @@ namespace Service
             var booking = await unitOfWork.Bookings.GetByIdAsync(bookingId);
 
             if (booking is null)
-                return new ResponseModel<string> { Message = "No such booking with that id" };
+                return new ResponseModel<string> { Message = "No such booking with that id", ErrorType = ErrorType.NotFound };
 
             if (!doctor.Appointments.Any(a => a.Time.Any(t => t.Booking.Id == booking.Id)))
-                return new ResponseModel<string> { Message = "No such booking with that id" };
+                return new ResponseModel<string> { Message = "No such booking with that id", ErrorType = ErrorType.NotFound };
 
             var request = booking.Request;
 
@@ -64,7 +64,7 @@ namespace Service
             }
             catch (DbUpdateException)
             {
-                return new ResponseModel<string> { Message = "Something went wrong." };
+                return new ResponseModel<string> { Message = "Something went wrong.", ErrorType = ErrorType.Unexpected };
             }
 
             return new ResponseModel<string> { Message = "Booking confirmed", Success = true, Data = "" };
@@ -84,7 +84,7 @@ namespace Service
                 a => a.Doctor.Id == doctorId && a.Days == appointmentDTO.Days, 1, 7);
 
             if (currentAppointments.Count() >= 1)
-                return new ResponseModel<Appointment> { Message = $"There is already an appointment at {appointmentDTO.Days}" };
+                return new ResponseModel<Appointment> { Message = $"There is already an appointment at {appointmentDTO.Days}", ErrorType = ErrorType.Conflict };
             
             try
             {
@@ -92,7 +92,7 @@ namespace Service
             }
             catch (DbUpdateException)
             {
-                return new ResponseModel<Appointment> { Message = "Something went wrong." };
+                return new ResponseModel<Appointment> { Message = "Something went wrong.", ErrorType = ErrorType.Unexpected };
             }
 
             unitOfWork.Complete();
@@ -108,7 +108,7 @@ namespace Service
             foreach (var time in appointment.Time)
             {
                 if (time.Booking is not null)
-                    return new ResponseModel<Appointment> { Message = "You can't update an already booked appointment." };
+                    return new ResponseModel<Appointment> { Message = "You can't update an already booked appointment.", ErrorType = ErrorType.Conflict };
             }
 
             mapper.Map(appointmentDTO, appointment);
@@ -122,7 +122,7 @@ namespace Service
             }
             catch (DbUpdateException)
             {
-                return new ResponseModel<Appointment> { Message = "Something went wrong." };
+                return new ResponseModel<Appointment> { Message = "Something went wrong.", ErrorType = ErrorType.Unexpected };
             }
 
             unitOfWork.Complete();
@@ -134,15 +134,15 @@ namespace Service
             var appointment = await unitOfWork.Appointments.GetByIdAsync(appointmentId);
 
             if (appointment is null)
-                return new ResponseModel<Appointment> { Message = "No appointment with that ID." };
+                return new ResponseModel<Appointment> { Message = "No appointment with that ID.", ErrorType = ErrorType.NotFound };
 
             if (appointment.Doctor.Id != doctorId)
-                return new ResponseModel<Appointment> { Message = "No appointment with that ID." };
+                return new ResponseModel<Appointment> { Message = "No appointment with that ID.", ErrorType = ErrorType.NotFound };
 
             foreach (var time in appointment.Time)
             {
                 if (time.Booking is not null)
-                    return new ResponseModel<Appointment> { Message = "Can't be deleted, already booked" };
+                    return new ResponseModel<Appointment> { Message = "Can't be deleted, already booked", ErrorType = ErrorType.Conflict };
             }
 
             try
@@ -151,7 +151,7 @@ namespace Service
             }
             catch (DbUpdateException)
             {
-                return new ResponseModel<Appointment> { Message = "Something went wrong." };
+                return new ResponseModel<Appointment> { Message = "Something went wrong.", ErrorType = ErrorType.Unexpected };
             }
 
             unitOfWork.Complete();
