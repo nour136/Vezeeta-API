@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using Domain.DTOs.AdminDTOs;
 using Domain.Models;
 using Domain;
@@ -41,7 +41,7 @@ namespace Service
             }
             catch (DbUpdateException)
             {
-                return new ResponseModel<IEnumerable<SpecializationDTO>> { Message = "Something went wrong." };
+                return new ResponseModel<IEnumerable<SpecializationDTO>> { Message = "Something went wrong.", ErrorType = ErrorType.Unexpected };
             }
 
             var specializationsDTO = mapper.Map<IEnumerable<SpecializationDTO>>(specializations);
@@ -82,12 +82,12 @@ namespace Service
             var doctor = await unitOfWork.AuthRepository.GetUserByIdAsync(id);
 
             if (doctor is null)
-                return new ResponseModel<DoctorDTO> { Message = "Invalid ID!" };
+                return new ResponseModel<DoctorDTO> { Message = "Invalid ID!", ErrorType = ErrorType.NotFound };
 
             var roles = await unitOfWork.AuthRepository.GetRolesAsync(doctor);
 
             if (!roles.Contains("Doctor"))
-                return new ResponseModel<DoctorDTO> { Message = "Invalid role!" };
+                return new ResponseModel<DoctorDTO> { Message = "Invalid role!", ErrorType = ErrorType.NotFound };
 
             var doctorDTO = mapper.Map<DoctorDTO>(doctor);
 

@@ -1,6 +1,7 @@
-﻿using Domain.Services;
+using Domain.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Vezeeta.API.Extensions;
 
 namespace Vezeeta.API.Controllers
 {
@@ -20,10 +21,7 @@ namespace Vezeeta.API.Controllers
         {
             var result = await adminPatientService.GetAllPatientsAsync("Patient", search, page, pageSize);
 
-            if (!result.Success)
-                return BadRequest(result);
-
-            return Ok(result);
+            return result.ToActionResult();
         }
 
         [HttpGet("getPatient/id={patientId}")]
@@ -31,10 +29,7 @@ namespace Vezeeta.API.Controllers
         {
             var result = await adminPatientService.GetPatientByIdAsync(patientId);
 
-            if (!result.Success)
-                return BadRequest(result);
-
-            return Ok(result);
+            return result.ToActionResult();
         }
     }
 }

@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using Domain;
 using Domain.DTOs.AdminDTOs;
 using Domain.Models;
@@ -39,10 +39,10 @@ namespace Service
             }
             catch (DbUpdateException)
             {
-                return new ResponseModel<DiscountCode> { Message = "Something went wrong" };
+                return new ResponseModel<DiscountCode> { Message = "Something went wrong", ErrorType = ErrorType.Unexpected };
             }
 
-            return new ResponseModel<DiscountCode> { Message = "DiscountCode is added successfully" };
+            return new ResponseModel<DiscountCode> { Success = true, Message = "DiscountCode is added successfully" };
         }
         public async Task<ResponseModel<IEnumerable<DiscountCode>>> GetAllCodesAsync(string search = "", int page = 1, int PageSize = 5)
         {
@@ -63,7 +63,7 @@ namespace Service
             var code = await unitOfWork.DiscountCodes.GetByIdAsync(codeId);
 
             if (code is null)
-                return new ResponseModel<DiscountCode> { Message = "No such code with that ID" };
+                return new ResponseModel<DiscountCode> { Message = "No such code with that ID", ErrorType = ErrorType.NotFound };
 
             code.IsActive = false;
 
@@ -75,7 +75,7 @@ namespace Service
             }
             catch (DbUpdateException)
             {
-                return new ResponseModel<DiscountCode> { Message = "Something went wrong." };
+                return new ResponseModel<DiscountCode> { Message = "Something went wrong.", ErrorType = ErrorType.Unexpected };
             }
 
             return new ResponseModel<DiscountCode> { Message = "Code is updated successfully.", Success = true, Data = code };
@@ -85,7 +85,7 @@ namespace Service
             var code = await unitOfWork.DiscountCodes.GetByIdAsync(codeId);
 
             if (code is null)
-                return new ResponseModel<DiscountCode> { Message = " no coupon match that id" };
+                return new ResponseModel<DiscountCode> { Message = " no coupon match that id", ErrorType = ErrorType.NotFound };
 
             unitOfWork.DiscountCodes.Delete(code);
 
@@ -95,7 +95,7 @@ namespace Service
             }
             catch (DbUpdateException)
             {
-                return new ResponseModel<DiscountCode> { Message = "Something went wrong." };
+                return new ResponseModel<DiscountCode> { Message = "Something went wrong.", ErrorType = ErrorType.Unexpected };
             }
 
             return new ResponseModel<DiscountCode> { Message = "Successfully deleted coupon", Success = true, Data = code };

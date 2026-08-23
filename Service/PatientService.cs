@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using Domain.Models;
 using Domain;
 using Domain.Repositories;
@@ -37,7 +37,7 @@ namespace Service
             var time = await unitOfWork.Time.GetByIdAsync(timeId);
 
             if ((time != null && time.Booking is not null))
-                return new ResponseModel<BookingDTO> { Message = "There's an appointment at this time" };
+                return new ResponseModel<BookingDTO> { Message = "There's an appointment at this time", ErrorType = ErrorType.Conflict };
 
             var request = new Request
             {
@@ -61,7 +61,7 @@ namespace Service
             }
             catch (DbUpdateException)
             {
-                new ResponseModel<BookingDTO> { Message = "Something went wrong." };
+                return new ResponseModel<BookingDTO> { Message = "Something went wrong.", ErrorType = ErrorType.Unexpected };
             }
 
             var bookingDTO = new BookingDTO
@@ -114,10 +114,10 @@ namespace Service
             var booking = await unitOfWork.Bookings.GetByIdAsync(bookingId);
 
             if (booking is null)
-                return new ResponseModel<Booking> { Message = "No such booking with that ID" };
+                return new ResponseModel<Booking> { Message = "No such booking with that ID", ErrorType = ErrorType.NotFound };
 
             if (!patient.Bookings.Any(b => b.Id == booking.Id))
-                return new ResponseModel<Booking> { Message = "No such booking with that ID" };
+                return new ResponseModel<Booking> { Message = "No such booking with that ID", ErrorType = ErrorType.NotFound };
 
             var request = booking.Request;
 
@@ -130,7 +130,7 @@ namespace Service
             }
             catch (DbUpdateException)
             {
-                return new ResponseModel<Booking> { Message = "Something went wrong" };
+                return new ResponseModel<Booking> { Message = "Something went wrong", ErrorType = ErrorType.Unexpected };
             }
 
             return new ResponseModel<Booking> { Success = true, Message = "Booking canceled", Data = booking };
@@ -144,12 +144,12 @@ namespace Service
 
                 if (code is null || !code.IsActive)
                 {
-                    return new ResponseModel<BookingDTO> { Message = "No such code available." };
+                    return new ResponseModel<BookingDTO> { Message = "No such code available.", ErrorType = ErrorType.NotFound };
                 }
 
                 if (code.Patients.Where(p => p.Id == patientId).Count() == 0)
                 {
-                    return new ResponseModel<BookingDTO> { Message = "No discount code is rewarded" };
+                    return new ResponseModel<BookingDTO> { Message = "No discount code is rewarded", ErrorType = ErrorType.Forbidden };
                 }
 
                 var expiredCodes = await unitOfWork.ExpiredCodes.GetAllByPropertyAsync(u => u.PatientId == patientId);
@@ -158,7 +158,7 @@ namespace Service
                 {
                     if (expiredCode.DiscountCode == code)
                     {
-                        return new ResponseModel<BookingDTO> { Message = "Code expired" };
+                        return new ResponseModel<BookingDTO> { Message = "Code expired", ErrorType = ErrorType.Conflict };
                     }
                 }
 
@@ -203,7 +203,7 @@ namespace Service
             }
             catch (DbUpdateException)
             {
-                return new ResponseModel<BookingDTO> { Message = "Something went wrong." };
+                return new ResponseModel<BookingDTO> { Message = "Something went wrong.", ErrorType = ErrorType.Unexpected };
             }
 
             var bookingDTO = new BookingDTO

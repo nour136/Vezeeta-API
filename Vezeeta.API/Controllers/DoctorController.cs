@@ -6,6 +6,7 @@ using Service;
 using Domain.Services;
 using Domain.DTOs.DoctorDTOs;
 using Microsoft.AspNetCore.Authorization;
+using Vezeeta.API.Extensions;
 
 namespace Vezeeta.API.Controllers
 {
@@ -31,12 +32,12 @@ namespace Vezeeta.API.Controllers
             var result = await authService.LoginAsync(model);
 
             if (!result.Success)
-                return BadRequest(result);
+                return result.ToActionResult();
 
             if (result.Data.Roles.Contains("Doctor"))
-                return Ok(result);
-            else
-                return BadRequest(new ResponseModel<AuthDTO> { Message = "Invalid role!" });
+                return result.ToActionResult();
+
+            return new ResponseModel<AuthDTO> { Message = "Invalid role!", ErrorType = ErrorType.Forbidden }.ToActionResult();
         }
 
         [Authorize(Roles = "Doctor")]
@@ -47,10 +48,7 @@ namespace Vezeeta.API.Controllers
 
             var result = await doctorService.GetAppointmentsAsync(userId, page, pageSize);
 
-            if (!result.Success)
-                return BadRequest(result);
-
-            return Ok(result);
+            return result.ToActionResult();
         }
 
         [Authorize(Roles = "Doctor")]
@@ -61,10 +59,7 @@ namespace Vezeeta.API.Controllers
 
             var result = await doctorService.ConfirmCheckUpsAsync(userId, bookingId);
 
-            if (!result.Success)
-                return BadRequest(result);
-
-            return Ok(result);
+            return result.ToActionResult();
         }
 
         [Authorize(Roles = "Doctor")]
@@ -78,10 +73,7 @@ namespace Vezeeta.API.Controllers
 
             var result = await doctorService.CreateAppointmentAsync(appointment, userId);
 
-            if (!result.Success)
-                return BadRequest(result);
-
-            return Ok(result);
+            return result.ToCreatedResult();
         }
 
         [Authorize(Roles = "Doctor")]
@@ -95,10 +87,7 @@ namespace Vezeeta.API.Controllers
 
             var result = await doctorService.UpdateAppointmentAsync(appointmentId, appointment, userId);
 
-            if (!result.Success)
-                return BadRequest(result);
-
-            return Ok(result);
+            return result.ToActionResult();
         }
 
         [Authorize(Roles = "Doctor")]
@@ -109,10 +98,7 @@ namespace Vezeeta.API.Controllers
 
             var result = await doctorService.DeleteAppointmentAsync(appointmentId, userId);
 
-            if (!result.Success)
-                return BadRequest(result);
-
-            return Ok(result);
+            return result.ToActionResult();
         }
     }
 }
