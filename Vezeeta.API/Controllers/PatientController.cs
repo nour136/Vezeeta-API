@@ -1,4 +1,4 @@
-﻿using Domain;
+using Domain;
 using Domain.DTOs.AuthDTOs;
 using Domain.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -38,6 +38,9 @@ namespace Vezeeta.API.Controllers
         [HttpPost("login")]
         public async Task<IActionResult> LoginAsync([FromForm] LoginDTO model)
         {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
             var result = await authService.LoginAsync(model);
 
             if (!result.Success)

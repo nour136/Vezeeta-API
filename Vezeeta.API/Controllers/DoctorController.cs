@@ -1,4 +1,4 @@
-﻿using Domain.DTOs.AuthDTOs;
+using Domain.DTOs.AuthDTOs;
 using Domain;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -71,6 +71,9 @@ namespace Vezeeta.API.Controllers
         [HttpPost("CreateAppointment")]
         public async Task<IActionResult> CreateAppointmentAsync([FromForm] AppointmentDTO appointment)
         {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
             var userId = User.FindFirst("uid")?.Value;
 
             var result = await doctorService.CreateAppointmentAsync(appointment, userId);
@@ -85,6 +88,9 @@ namespace Vezeeta.API.Controllers
         [HttpPut("updateAppointment/id={appointmentId}")]
         public async Task<IActionResult> UpdateAppointmentAsync([FromForm] AppointmentDTO appointment, int appointmentId)
         {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
             var userId = User.FindFirst("uid")?.Value;
 
             var result = await doctorService.UpdateAppointmentAsync(appointmentId, appointment, userId);

@@ -1,4 +1,4 @@
-﻿using Domain.DTOs.AdminDTOs;
+using Domain.DTOs.AdminDTOs;
 using Domain.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -19,6 +19,9 @@ namespace Vezeeta.API.Controllers
         [HttpPost("addDiscountCode")]
         public async Task<IActionResult> AddCouponAsync([FromForm] DiscountCodeDTO codeDTO)
         {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
             var result = await discountCodeService.AddDiscountCodeAsync(codeDTO);
 
             if (!result.Success)

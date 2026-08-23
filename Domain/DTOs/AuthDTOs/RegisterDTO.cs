@@ -1,5 +1,6 @@
-﻿using Domain.Enums;
+using Domain.Enums;
 using Domain.Models;
+using Domain.Validation;
 using Microsoft.AspNetCore.Http;
 using System;
 using System.Collections.Generic;
@@ -26,9 +27,11 @@ namespace Domain.DTOs.AuthDTOs
         public string Username { get; set; }
 
         [Required]
+        [EmailAddress(ErrorMessage = "A valid email address is required.")]
         public string Email { get; set; }
 
         [Required]
+        [Phone(ErrorMessage = "A valid phone number is required.")]
         public string Phone { get; set; }
 
         [Required]
@@ -37,9 +40,11 @@ namespace Domain.DTOs.AuthDTOs
         public IFormFile? ImageFile { get; set; }
 
         [Required]
+        [PastDate]
         public DateTime DateOfBirth { get; set; }
 
         [Required]
+        [MinLength(6, ErrorMessage = "Password must be at least 6 characters.")]
         public string Password { get; set; }
     }
 }
