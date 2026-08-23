@@ -1,4 +1,5 @@
-﻿using Domain.Enums;
+using Domain.Enums;
+using Domain.Validation;
 using Microsoft.AspNetCore.Http;
 using System.ComponentModel.DataAnnotations;
 
@@ -23,23 +24,28 @@ namespace Domain.DTOs.AuthDTOs
         public string Username { get; set; }
 
         [Required]
+        [EmailAddress(ErrorMessage = "A valid email address is required.")]
         public string Email { get; set; }
 
         [Required]
+        [Phone(ErrorMessage = "A valid phone number is required.")]
         public string Phone { get; set; }
 
         [Required]
         public Gender Gender { get; set; }
 
         [Required]
+        [Range(1, int.MaxValue, ErrorMessage = "A valid specialization must be selected.")]
         public int SpecializeId { get; set; }
 
         public IFormFile? ImageFile { get; set; }
 
         [Required]
+        [PastDate]
         public DateTime DateOfBirth { get; set; }
 
         [Required]
+        [MinLength(6, ErrorMessage = "Password must be at least 6 characters.")]
         public string Password { get; set; }
     }
 }

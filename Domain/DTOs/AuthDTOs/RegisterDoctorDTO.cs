@@ -1,4 +1,4 @@
-﻿using Domain.Enums;
+using Domain.Enums;
 using Microsoft.AspNetCore.Http;
 using System;
 using System.Collections.Generic;
@@ -11,7 +11,7 @@ namespace Domain.DTOs.AuthDTOs
 {
     public class RegisterDoctorDTO : RegisterDTO
     {
-        [Required]
+        [Range(1, int.MaxValue, ErrorMessage = "A valid specialization must be selected.")]
         public int SpecializeId { get; set; }
     }
 }
