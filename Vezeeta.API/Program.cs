@@ -11,6 +11,7 @@ using Repository;
 using Service;
 using System.Text;
 using System.Text.Json.Serialization;
+using Vezeeta.API.Middlewares;
 
 namespace Vezeeta.API
 {
@@ -96,6 +97,7 @@ namespace Vezeeta.API
                 });
 
             var app = builder.Build();
+            app.UseGlobalExceptionHandling();
 
             // Configure the HTTP request pipeline.
             if (app.Environment.IsDevelopment())
