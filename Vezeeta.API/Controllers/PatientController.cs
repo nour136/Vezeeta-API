@@ -60,12 +60,21 @@ namespace Vezeeta.API.Controllers
         }
 
         [Authorize(Roles = "Patient")]
-        [HttpGet("book/id={timeId}")]
-        public async Task<IActionResult> BookAsync(int timeId)
+        [HttpGet("getAvailableSlots/doctorId={doctorId}")]
+        public async Task<IActionResult> GetAvailableSlotsAsync(string doctorId)
+        {
+            var result = await patientService.GetAvailableSlotsAsync(doctorId);
+
+            return result.ToActionResult();
+        }
+
+        [Authorize(Roles = "Patient")]
+        [HttpGet("book/id={slotId}")]
+        public async Task<IActionResult> BookAsync(int slotId)
         {
             var userId = User.FindFirst("uid")?.Value;
 
-            var result = await patientService.BookAppointmentAsync(userId, timeId);
+            var result = await patientService.BookAppointmentAsync(userId, slotId);
 
             return result.ToCreatedResult();
         }

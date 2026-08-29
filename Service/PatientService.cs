@@ -33,13 +33,19 @@ namespace Service
             this.logger = logger;
         }
 
-        public async Task<ResponseModel<BookingDTO>> BookAppointmentAsync(string patientId, int timeId)
+        public async Task<ResponseModel<BookingDTO>> BookAppointmentAsync(string patientId, int slotId)
         {
             var patient = await unitOfWork.AuthRepository.GetUserByIdAsync(patientId);
 
-            var time = await unitOfWork.Time.GetByIdAsync(timeId);
+            var slot = await unitOfWork.Slots.GetByIdAsync(slotId);
 
-            if ((time != null && time.Booking is not null))
+            if (slot is null)
+                return new ResponseModel<BookingDTO> { Message = "No such slot.", ErrorType = ErrorType.NotFound };
+
+            if (slot.Date.ToDateTime(slot.Time) < DateTime.Now)
+                return new ResponseModel<BookingDTO> { Message = "Can't book a slot in the past.", ErrorType = ErrorType.ValidationError };
+
+            if (slot.Status != SlotStatus.Available)
                 return new ResponseModel<BookingDTO> { Message = "There's an appointment at this time", ErrorType = ErrorType.Conflict };
 
             var request = new Request
@@ -50,9 +56,11 @@ namespace Service
             Booking booking = new Booking
             {
                 Patient = patient,
-                Time = time,
+                Slot = slot,
                 Request = request
             };
+
+            slot.Status = SlotStatus.Booked;
 
             await unitOfWork.Bookings.CreateAsync(booking);
 
@@ -64,21 +72,36 @@ namespace Service
             }
             catch (DbUpdateException ex)
             {
-                logger.LogError(ex, "Failed to book time slot {TimeId} for patient {PatientId}", timeId, patientId);
+                logger.LogError(ex, "Failed to book slot {SlotId} for patient {PatientId}", slotId, patientId);
                 return new ResponseModel<BookingDTO> { Message = "Something went wrong.", ErrorType = ErrorType.Unexpected };
             }
 
-            logger.LogInformation("Patient {PatientId} booked time slot {TimeId}", patientId, timeId);
+            logger.LogInformation("Patient {PatientId} booked slot {SlotId}", patientId, slotId);
 
             var bookingDTO = new BookingDTO
             {
-                TimeId = timeId,
-                Time = time.Time,
+                SlotId = slotId,
+                Date = slot.Date,
+                Time = slot.Time,
                 RequestState = booking.Request.RequestState,
-                DoctorName = time.Appointment.Doctor.FirstName + " " + time.Appointment.Doctor.LastName,
+                DoctorName = slot.Doctor.FirstName + " " + slot.Doctor.LastName,
+                Price = slot.Price,
+                FinalPrice = slot.Price
             };
 
             return new ResponseModel<BookingDTO> { Message = "Appointment is booked successfully.", Success = true, Data = bookingDTO };
+        }
+
+        public async Task<ResponseModel<IEnumerable<AppointmentSlotDTO>>> GetAvailableSlotsAsync(string doctorId)
+        {
+            var today = DateOnly.FromDateTime(DateTime.Now);
+
+            var slots = await unitOfWork.Slots.GetAllByPropertyAsync(
+                s => s.DoctorId == doctorId && s.Status == SlotStatus.Available && s.Date >= today);
+
+            var orderedSlots = slots.OrderBy(s => s.Date).ThenBy(s => s.Time);
+
+            return new ResponseModel<IEnumerable<AppointmentSlotDTO>> { Success = true, Message = "Available slots retrieved.", Data = mapper.Map<IEnumerable<AppointmentSlotDTO>>(orderedSlots) };
         }
         public async Task<ResponseModel<IEnumerable<AllDoctorsDTO>>> GetAllAppointmentsAsync(string search, int page = 1, int pageSize = 5)
         {
@@ -126,8 +149,10 @@ namespace Service
                 return new ResponseModel<Booking> { Message = "No such booking with that ID", ErrorType = ErrorType.NotFound };
 
             var request = booking.Request;
+            var slot = booking.Slot;
 
-            unitOfWork.Bookings.Delete(booking);
+            if (slot.Date.ToDateTime(slot.Time) >= DateTime.Now)
+                slot.Status = SlotStatus.Available;
 
             try
             {
@@ -221,8 +246,6 @@ namespace Service
                 Price = time.Appointment.Price,
                 FinalPrice = booking.FinalPrice,
                 Id = booking.Id,
-                TimeId = time.Id,
-                Time = time.Time,
                 RequestState = booking.Request.RequestState,
                 DoctorName = time.Appointment.Doctor.FirstName + " " + time.Appointment.Doctor.LastName,
             };

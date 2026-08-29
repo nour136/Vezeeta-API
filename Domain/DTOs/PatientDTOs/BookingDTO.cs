@@ -1,22 +1,17 @@
-﻿using Domain.Enums;
+using Domain.Enums;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Domain.DTOs.PatientDTOs
 {
     public class BookingDTO
     {
         public int Id { get; set; }
-        public int TimeId { get; set; }
+        public int SlotId { get; set; }
+        public DateOnly Date { get; set; }
         public TimeOnly Time { get; set; }
         public string DoctorName { get; set; }
-        public Days Days { get; set; }
         public RequestState RequestState { get; set; }
         public int Price { get; set; }
         public int FinalPrice { get; set; }
-
     }
 }

@@ -60,8 +60,7 @@ namespace Vezeeta.API
             builder.Services.AddIdentity<ApplicationUser, IdentityRole>().AddEntityFrameworkStores<ApplicationDbContext>();
 
             builder.Services.AddDbContext<ApplicationDbContext>(optionBuilder =>
-                optionBuilder.UseSqlServer(builder.Configuration.GetConnectionString("VezeetaDB"),
-                b => b.UseDateOnlyTimeOnly())
+                optionBuilder.UseSqlServer(builder.Configuration.GetConnectionString("VezeetaDB"))
             );
 
             builder.Services.AddTransient<IAuthService, AuthService>();

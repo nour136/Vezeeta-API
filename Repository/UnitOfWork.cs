@@ -18,6 +18,7 @@ namespace Repository
         public IBaseRepository<Specialization> Specializations { get; private set; }
         public IBaseRepository<Request> Requests { get; private set; }
         public IBaseRepository<DayTime> Time { get; private set; }
+        public IBaseRepository<AppointmentSlot> Slots { get; private set; }
         public IBaseRepository<DiscountCode> DiscountCodes { get; private set; }
         public IBaseRepository<ExpiredCode> ExpiredCodes { get; private set; }
 
@@ -30,6 +31,7 @@ namespace Repository
             Specializations = new BaseRepository<Specialization>(context);
             Requests = new BaseRepository<Request>(context);
             Time = new BaseRepository<DayTime>(context);
+            Slots = new BaseRepository<AppointmentSlot>(context);
             DiscountCodes = new BaseRepository<DiscountCode>(context);
             ExpiredCodes = new BaseRepository<ExpiredCode>(context);
         }
