@@ -1,6 +1,7 @@
-﻿using Domain.Repositories;
+using Domain.Repositories;
 using Domain.Models;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Logging;
 using Repository.Repositories;
 using Microsoft.EntityFrameworkCore;
 using static Azure.Core.HttpHeader;
@@ -20,10 +21,10 @@ namespace Repository
         public IBaseRepository<DiscountCode> DiscountCodes { get; private set; }
         public IBaseRepository<ExpiredCode> ExpiredCodes { get; private set; }
 
-        public UnitOfWork(ApplicationDbContext context, UserManager<ApplicationUser> userManager)
+        public UnitOfWork(ApplicationDbContext context, UserManager<ApplicationUser> userManager, ILogger<UserRepository> userRepositoryLogger)
         {
             this.context = context;
-            AuthRepository = new UserRepository(userManager);
+            AuthRepository = new UserRepository(userManager, userRepositoryLogger);
             Appointments = new BaseRepository<Appointment>(context);
             Bookings = new BaseRepository<Booking>(context);
             Specializations = new BaseRepository<Specialization>(context);

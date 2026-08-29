@@ -1,5 +1,6 @@
 using AutoMapper;
 using Domain;
+using Microsoft.Extensions.Logging;
 using Domain.DTOs.AuthDTOs;
 using Domain.Models;
 using Domain.Repositories;
@@ -20,19 +21,24 @@ namespace Service
         private readonly IUnitOfWork unitOfWork;
         private readonly IImageService imageService;
         private readonly IMapper mapper;
+        private readonly ILogger<AuthService> logger;
 
-        public AuthService(IOptions<JWT> jwt, IUnitOfWork unitOfWork, IImageService imageService, IMapper mapper)
+        public AuthService(IOptions<JWT> jwt, IUnitOfWork unitOfWork, IImageService imageService, IMapper mapper, ILogger<AuthService> logger)
         {
             this.jwt = jwt.Value;
             this.unitOfWork = unitOfWork;
             this.imageService = imageService;
             this.mapper = mapper;
+            this.logger = logger;
         }
 
         public async Task<ResponseModel<AuthDTO>> RegisterAsync<TRegisterDTO>(TRegisterDTO model, string role) where TRegisterDTO : RegisterDTO
         {
             if (await unitOfWork.AuthRepository.EmailExistAsync(model.Email))
+            {
+                logger.LogWarning("Registration attempt with already-registered email {Email}", model.Email);
                 return new ResponseModel<AuthDTO> { Success = false, Message = "Email is already registered", ErrorType = ErrorType.Conflict };
+            }
 
             if (await unitOfWork.AuthRepository.UserNameExistAsync(model.Username))
                 return new ResponseModel<AuthDTO> { Success = false, Message = "Username is already registered", ErrorType = ErrorType.Conflict };
@@ -64,6 +70,8 @@ namespace Service
 
                 var jwtSecurityToken = await CreateJwtToken(user);
 
+                logger.LogInformation("New {Role} account registered: {Email}", role, user.Email);
+
                 return new ResponseModel<AuthDTO>
                 {
                     Message = result.Message,
@@ -92,10 +100,13 @@ namespace Service
 
             if (user is null || !await unitOfWork.AuthRepository.CheckPasswordAsync(user, model.Password))
             {
+                logger.LogWarning("Failed login attempt for {Email}", model.Email);
                 return new ResponseModel<AuthDTO> { Message = "Invalid credentials!", ErrorType = ErrorType.Unauthorized };
             }
 
             var jwtSecurityToken = await CreateJwtToken(user);
+
+            logger.LogInformation("User {Email} logged in successfully", user.Email);
 
             return new ResponseModel<AuthDTO>
             {
@@ -183,21 +194,6 @@ namespace Service
 
             return await unitOfWork.AuthRepository.DeleteAsync(user);
         }
-
-        //public async Task<string> AddRoleAsync(AddRoleDTO model, string role)
-        //{
-        //    var user = await unitOfWork.AuthRepository.GetUserByIdAsync(model.UserId);
-
-        //    if (user is null || !await unitOfWork.AuthRepository.RoleExistsAsync(role))
-        //        return "Invalid user ID or Role";
-
-        //    if (await unitOfWork.AuthRepository.IsInRoleAsync(user, role))
-        //        return "User already assigned to this role";
-
-        //    var result = await unitOfWork.AuthRepository.AddUserToRole(user, role);
-
-        //    return result.Success ? string.Empty : "Something went wrong";
-        //}
 
         public async Task<JwtSecurityToken> CreateJwtToken(ApplicationUser user)
         {

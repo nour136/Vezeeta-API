@@ -1,5 +1,6 @@
 using AutoMapper;
 using Domain;
+using Microsoft.Extensions.Logging;
 using Domain.DTOs.DoctorDTOs;
 using Domain.Enums;
 using Domain.Models;
@@ -20,11 +21,13 @@ namespace Service
     {
         private readonly IUnitOfWork unitOfWork;
         private readonly IMapper mapper;
+        private readonly ILogger<DoctorService> logger;
 
-        public DoctorService(IUnitOfWork unitOfWork, IMapper mapper)
+        public DoctorService(IUnitOfWork unitOfWork, IMapper mapper, ILogger<DoctorService> logger)
         {
             this.unitOfWork = unitOfWork;
             this.mapper = mapper;
+            this.logger = logger;
         }
 
         public async Task<ResponseModel<IEnumerable<AppointmentDTO>>> GetAppointmentsAsync(string doctorId, int page = 1, int pageSize = 5)
@@ -62,10 +65,13 @@ namespace Service
                 request.RequestState = RequestState.Completed;
                 unitOfWork.Complete();
             }
-            catch (DbUpdateException)
+            catch (DbUpdateException ex)
             {
+                logger.LogError(ex, "Failed to confirm booking {BookingId} for doctor {DoctorId}", bookingId, doctorId);
                 return new ResponseModel<string> { Message = "Something went wrong.", ErrorType = ErrorType.Unexpected };
             }
+
+            logger.LogInformation("Doctor {DoctorId} confirmed booking {BookingId}", doctorId, bookingId);
 
             return new ResponseModel<string> { Message = "Booking confirmed", Success = true, Data = "" };
         }
@@ -90,12 +96,15 @@ namespace Service
             {
                 await unitOfWork.Appointments.CreateAsync(appointment);
             }
-            catch (DbUpdateException)
+            catch (DbUpdateException ex)
             {
+                logger.LogError(ex, "Failed to create appointment for doctor {DoctorId}", doctorId);
                 return new ResponseModel<Appointment> { Message = "Something went wrong.", ErrorType = ErrorType.Unexpected };
             }
 
             unitOfWork.Complete();
+
+            logger.LogInformation("Doctor {DoctorId} created an appointment on {Days}", doctorId, appointmentDTO.Days);
 
             return new ResponseModel<Appointment> { Success = true, Message = "New appointment is added successfully.", Data = appointment };
         }
@@ -120,12 +129,15 @@ namespace Service
             {
                 unitOfWork.Appointments.Update(appointment);
             }
-            catch (DbUpdateException)
+            catch (DbUpdateException ex)
             {
+                logger.LogError(ex, "Failed to update appointment {AppointmentId} for doctor {DoctorId}", appointmentId, doctorId);
                 return new ResponseModel<Appointment> { Message = "Something went wrong.", ErrorType = ErrorType.Unexpected };
             }
 
             unitOfWork.Complete();
+
+            logger.LogInformation("Doctor {DoctorId} updated appointment {AppointmentId}", doctorId, appointmentId);
 
             return new ResponseModel<Appointment> { Success = true, Message = "Appointment is updated successfully.", Data = appointment };
         }
@@ -149,12 +161,15 @@ namespace Service
             {
                 unitOfWork.Appointments.Delete(appointment);
             }
-            catch (DbUpdateException)
+            catch (DbUpdateException ex)
             {
+                logger.LogError(ex, "Failed to delete appointment {AppointmentId} for doctor {DoctorId}", appointmentId, doctorId);
                 return new ResponseModel<Appointment> { Message = "Something went wrong.", ErrorType = ErrorType.Unexpected };
             }
 
             unitOfWork.Complete();
+
+            logger.LogInformation("Doctor {DoctorId} deleted appointment {AppointmentId}", doctorId, appointmentId);
 
             return new ResponseModel<Appointment> { Success = true, Message = "Appointment is deleted successfully.", Data = appointment };
         }

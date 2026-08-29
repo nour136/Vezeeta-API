@@ -1,5 +1,6 @@
 using Domain.Models;
 using Domain;
+using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Identity;
 using System;
 using System.Collections.Generic;
@@ -16,10 +17,12 @@ namespace Repository.Repositories
     public class UserRepository : IUserRepository
     {
         private readonly UserManager<ApplicationUser> userManager;
+        private readonly ILogger<UserRepository> logger;
 
-        public UserRepository(UserManager<ApplicationUser> userManager)
+        public UserRepository(UserManager<ApplicationUser> userManager, ILogger<UserRepository> logger)
         {
             this.userManager = userManager;
+            this.logger = logger;
         }
 
         public async Task<ResponseModel<AuthDTO>> RegisterAsync(ApplicationUser user, string password)
@@ -64,8 +67,9 @@ namespace Repository.Repositories
             {
                 await userManager.DeleteAsync(user);
             }
-            catch (DbUpdateException)
+            catch (DbUpdateException ex)
             {
+                logger.LogError(ex, "Failed to delete user account {UserId}", user.Id);
                 return new ResponseModel<AuthDTO> { Message = "Something went wrong.", ErrorType = ErrorType.Unexpected };
             }
 
@@ -140,16 +144,6 @@ namespace Repository.Repositories
             var usersInRole = await userManager.GetUsersInRoleAsync(roleName);
             return usersInRole.Count;
         }
-
-        //public async Task<bool> RoleExistsAsync(string role)
-        //{
-        //    return await roleManager.RoleExistsAsync(role);
-        //}
-
-        //public async Task<bool> IsInRoleAsync(ApplicationUser user, string role)
-        //{
-        //    return await userManager.IsInRoleAsync(user, role);
-        //}
 
         internal ResponseModel<AuthDTO> ErrorMessage(IdentityResult result)
         {

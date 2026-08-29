@@ -1,5 +1,6 @@
 using AutoMapper;
 using Domain.DTOs.AdminDTOs;
+using Microsoft.Extensions.Logging;
 using Domain.Models;
 using Domain;
 using Domain.Repositories;
@@ -20,12 +21,14 @@ namespace Service
         private readonly IUnitOfWork unitOfWork;
         private readonly IMapper mapper;
         private readonly IImageService imageService;
+        private readonly ILogger<AdminDoctorService> logger;
 
-        public AdminDoctorService(IUnitOfWork unitOfWork, IMapper mapper, IImageService imageService)
+        public AdminDoctorService(IUnitOfWork unitOfWork, IMapper mapper, IImageService imageService, ILogger<AdminDoctorService> logger)
         {
             this.unitOfWork = unitOfWork;
             this.mapper = mapper;
             this.imageService = imageService;
+            this.logger = logger;
         }
 
         public async Task<ResponseModel<IEnumerable<SpecializationDTO>>> GetAllSpecializationsAsync(string search = "", int page = 1, int pageSize = 5)
@@ -39,8 +42,9 @@ namespace Service
                 else
                     specializations = await unitOfWork.Specializations.GetAllPaginatedFilteredAsync(null, page, pageSize);
             }
-            catch (DbUpdateException)
+            catch (DbUpdateException ex)
             {
+                logger.LogError(ex, "Failed to retrieve specializations (search: {Search})", search);
                 return new ResponseModel<IEnumerable<SpecializationDTO>> { Message = "Something went wrong.", ErrorType = ErrorType.Unexpected };
             }
 

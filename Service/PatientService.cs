@@ -1,5 +1,6 @@
 using AutoMapper;
 using Domain.Models;
+using Microsoft.Extensions.Logging;
 using Domain;
 using Domain.Repositories;
 using Domain.Services;
@@ -22,12 +23,14 @@ namespace Service
         private readonly IUnitOfWork unitOfWork;
         private readonly IMapper mapper;
         private readonly IImageService imageService;
+        private readonly ILogger<PatientService> logger;
 
-        public PatientService(IUnitOfWork unitOfWork, IMapper mapper, IImageService imageService)
+        public PatientService(IUnitOfWork unitOfWork, IMapper mapper, IImageService imageService, ILogger<PatientService> logger)
         {
             this.unitOfWork = unitOfWork;
             this.mapper = mapper;
             this.imageService = imageService;
+            this.logger = logger;
         }
 
         public async Task<ResponseModel<BookingDTO>> BookAppointmentAsync(string patientId, int timeId)
@@ -59,10 +62,13 @@ namespace Service
             {
                 unitOfWork.Complete();
             }
-            catch (DbUpdateException)
+            catch (DbUpdateException ex)
             {
+                logger.LogError(ex, "Failed to book time slot {TimeId} for patient {PatientId}", timeId, patientId);
                 return new ResponseModel<BookingDTO> { Message = "Something went wrong.", ErrorType = ErrorType.Unexpected };
             }
+
+            logger.LogInformation("Patient {PatientId} booked time slot {TimeId}", patientId, timeId);
 
             var bookingDTO = new BookingDTO
             {
@@ -128,10 +134,13 @@ namespace Service
                 request.RequestState = RequestState.Cancelled;
                 unitOfWork.Complete();
             }
-            catch (DbUpdateException)
+            catch (DbUpdateException ex)
             {
+                logger.LogError(ex, "Failed to cancel booking {BookingId} for patient {PatientId}", bookingId, patientId);
                 return new ResponseModel<Booking> { Message = "Something went wrong", ErrorType = ErrorType.Unexpected };
             }
+
+            logger.LogInformation("Patient {PatientId} cancelled booking {BookingId}", patientId, bookingId);
 
             return new ResponseModel<Booking> { Success = true, Message = "Booking canceled", Data = booking };
         }
@@ -201,8 +210,9 @@ namespace Service
             {
                 unitOfWork.Complete();
             }
-            catch (DbUpdateException)
+            catch (DbUpdateException ex)
             {
+                logger.LogError(ex, "Failed to finalize priced booking for patient {PatientId}", patientId);
                 return new ResponseModel<BookingDTO> { Message = "Something went wrong.", ErrorType = ErrorType.Unexpected };
             }
 

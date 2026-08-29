@@ -97,9 +97,17 @@ namespace Vezeeta.API
                 });
 
             var app = builder.Build();
-            app.UseGlobalExceptionHandling();
 
             // Configure the HTTP request pipeline.
+
+            // Must be registered first so it can catch exceptions thrown by everything after it
+            // (including auth, routing, and controller actions).
+            app.UseGlobalExceptionHandling();
+
+            // Registered right after exception handling so it still sees the final status code
+            // (including 500s) even when a downstream request throws.
+            app.UseRequestLogging();
+
             if (app.Environment.IsDevelopment())
             {
                 app.UseSwagger();
