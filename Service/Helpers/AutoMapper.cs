@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using Domain.DTOs.AdminDTOs;
 using Domain.DTOs.AuthDTOs;
 using Domain.DTOs.DoctorDTOs;
@@ -41,16 +41,19 @@ namespace Services.Helpers
             CreateMap<DayTime, DayTimeDTO>()
                 .ReverseMap();
 
+            CreateMap<AppointmentSlot, AppointmentSlotDTO>()
+                .ReverseMap();
+
             CreateMap<DiscountCode, DiscountCodeDTO>()
                 .ReverseMap();
 
             CreateMap<Booking, BookingDTO>()
-                .ForMember(dest => dest.TimeId, src => src.MapFrom(src => src.Time.Id))
-                .ForMember(dest => dest.Time, src => src.MapFrom(src => src.Time.Time))
-                .ForMember(dest => dest.Days, src => src.MapFrom(src => src.Time.Appointment.Days))
-                .ForMember(dest => dest.DoctorName, src => src.MapFrom(src => src.Time.Appointment.Doctor.FirstName + " " + src.Time.Appointment.Doctor.LastName))
+                .ForMember(dest => dest.SlotId, src => src.MapFrom(src => src.Slot.Id))
+                .ForMember(dest => dest.Date, src => src.MapFrom(src => src.Slot.Date))
+                .ForMember(dest => dest.Time, src => src.MapFrom(src => src.Slot.Time))
+                .ForMember(dest => dest.DoctorName, src => src.MapFrom(src => src.Slot.Doctor.FirstName + " " + src.Slot.Doctor.LastName))
                 .ForMember(dest => dest.RequestState, src => src.MapFrom(src => src.Request.RequestState))
-                .ForMember(dest => dest.Price, src => src.MapFrom(src => src.Time.Appointment.Price))
+                .ForMember(dest => dest.Price, src => src.MapFrom(src => src.Slot.Price))
                 .ForMember(dest => dest.FinalPrice, src => src.MapFrom(src => src.FinalPrice))
                 .ReverseMap();
 

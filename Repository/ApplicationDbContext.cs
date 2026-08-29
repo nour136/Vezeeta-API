@@ -1,4 +1,4 @@
-﻿using Domain.Models;
+using Domain.Models;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -16,6 +16,20 @@ namespace Repository
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+
+            modelBuilder.Entity<AppointmentSlot>()
+                .HasOne(s => s.SourceAppointment)
+                .WithMany()
+                .HasForeignKey(s => s.SourceAppointmentId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<AppointmentSlot>()
+                .HasIndex(s => new { s.DoctorId, s.Date, s.Time })
+                .IsUnique();
+
+            modelBuilder.Entity<Booking>()
+                .HasIndex(b => b.SlotId)
+                .IsUnique();
         }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
@@ -28,6 +42,7 @@ namespace Repository
         public DbSet<Appointment> Appointments { get; set; }
         public DbSet<Booking> Bookings { get; set; }
         public DbSet<DayTime> Times { get; set; }
+        public DbSet<AppointmentSlot> Slots { get; set; }
         public DbSet<Request> Requests { get; set; }
         public DbSet<Specialization> Specializations { get; set; }
         public DbSet<DiscountCode> Discounts { get; set; }

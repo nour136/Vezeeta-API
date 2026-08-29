@@ -1,4 +1,4 @@
-﻿using Domain.Models;
+using Domain.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -15,6 +15,7 @@ namespace Domain.Repositories
         IBaseRepository<Specialization> Specializations { get; }
         IBaseRepository<Request> Requests { get; }
         IBaseRepository<DayTime> Time { get; }
+        IBaseRepository<AppointmentSlot> Slots { get; }
         IBaseRepository<DiscountCode> DiscountCodes { get; }
         IBaseRepository<ExpiredCode> ExpiredCodes { get; }
         

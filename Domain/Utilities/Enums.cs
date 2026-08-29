@@ -1,4 +1,4 @@
-﻿using System.Text.Json.Serialization;
+using System.Text.Json.Serialization;
 
 namespace Domain.Enums
 {
@@ -34,5 +34,12 @@ namespace Domain.Enums
         Pending,
         Completed,
         Cancelled
+    }
+
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public enum SlotStatus
+    {
+        Available,
+        Booked
     }
 }

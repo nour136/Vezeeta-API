@@ -46,19 +46,15 @@ namespace Service
         }
         public async Task<ResponseModel<string>> ConfirmCheckUpsAsync(string doctorId, int bookingId)
         {
-            var doctor = await unitOfWork.AuthRepository.GetUserByIdAsync(doctorId);
-
             var booking = await unitOfWork.Bookings.GetByIdAsync(bookingId);
 
             if (booking is null)
                 return new ResponseModel<string> { Message = "No such booking with that id", ErrorType = ErrorType.NotFound };
 
-            if (!doctor.Appointments.Any(a => a.Time.Any(t => t.Booking.Id == booking.Id)))
+            if (booking.Slot.DoctorId != doctorId)
                 return new ResponseModel<string> { Message = "No such booking with that id", ErrorType = ErrorType.NotFound };
 
             var request = booking.Request;
-
-            unitOfWork.Bookings.Delete(booking);
 
             try
             {
@@ -67,13 +63,13 @@ namespace Service
             }
             catch (DbUpdateException ex)
             {
-                logger.LogError(ex, "Failed to confirm booking {BookingId} for doctor {DoctorId}", bookingId, doctorId);
+                logger.LogError(ex, "Failed to complete booking {BookingId} for doctor {DoctorId}", bookingId, doctorId);
                 return new ResponseModel<string> { Message = "Something went wrong.", ErrorType = ErrorType.Unexpected };
             }
 
-            logger.LogInformation("Doctor {DoctorId} confirmed booking {BookingId}", doctorId, bookingId);
+            logger.LogInformation("Doctor {DoctorId} marked booking {BookingId} as completed", doctorId, bookingId);
 
-            return new ResponseModel<string> { Message = "Booking confirmed", Success = true, Data = "" };
+            return new ResponseModel<string> { Message = "Booking marked as completed", Success = true, Data = "" };
         }
         public async Task<ResponseModel<Appointment>> CreateAppointmentAsync(AppointmentDTO appointmentDTO, string doctorId)
         {
@@ -91,10 +87,14 @@ namespace Service
 
             if (currentAppointments.Count() >= 1)
                 return new ResponseModel<Appointment> { Message = $"There is already an appointment at {appointmentDTO.Days}", ErrorType = ErrorType.Conflict };
-            
+
             try
             {
                 await unitOfWork.Appointments.CreateAsync(appointment);
+
+                await GenerateSlotsAsync(appointment, doctorId);
+
+                unitOfWork.Complete();
             }
             catch (DbUpdateException ex)
             {
@@ -102,9 +102,7 @@ namespace Service
                 return new ResponseModel<Appointment> { Message = "Something went wrong.", ErrorType = ErrorType.Unexpected };
             }
 
-            unitOfWork.Complete();
-
-            logger.LogInformation("Doctor {DoctorId} created an appointment on {Days}", doctorId, appointmentDTO.Days);
+            logger.LogInformation("Doctor {DoctorId} created an appointment on {Days} with {SlotCount} generated slots", doctorId, appointmentDTO.Days, appointment.Time?.Count * SlotGenerationWeeks ?? 0);
 
             return new ResponseModel<Appointment> { Success = true, Message = "New appointment is added successfully.", Data = appointment };
         }
@@ -114,11 +112,8 @@ namespace Service
 
             var appointment = await unitOfWork.Appointments.GetByIdAsync(appointmentId);
 
-            foreach (var time in appointment.Time)
-            {
-                if (time.Booking is not null)
-                    return new ResponseModel<Appointment> { Message = "You can't update an already booked appointment.", ErrorType = ErrorType.Conflict };
-            }
+            if (appointment is null || appointment.Doctor.Id != doctorId)
+                return new ResponseModel<Appointment> { Message = "No appointment with that ID.", ErrorType = ErrorType.NotFound };
 
             mapper.Map(appointmentDTO, appointment);
 
@@ -128,14 +123,16 @@ namespace Service
             try
             {
                 unitOfWork.Appointments.Update(appointment);
+
+                await RegenerateSlotsAsync(appointment, doctorId);
+
+                unitOfWork.Complete();
             }
             catch (DbUpdateException ex)
             {
                 logger.LogError(ex, "Failed to update appointment {AppointmentId} for doctor {DoctorId}", appointmentId, doctorId);
                 return new ResponseModel<Appointment> { Message = "Something went wrong.", ErrorType = ErrorType.Unexpected };
             }
-
-            unitOfWork.Complete();
 
             logger.LogInformation("Doctor {DoctorId} updated appointment {AppointmentId}", doctorId, appointmentId);
 
@@ -151,15 +148,18 @@ namespace Service
             if (appointment.Doctor.Id != doctorId)
                 return new ResponseModel<Appointment> { Message = "No appointment with that ID.", ErrorType = ErrorType.NotFound };
 
-            foreach (var time in appointment.Time)
-            {
-                if (time.Booking is not null)
-                    return new ResponseModel<Appointment> { Message = "Can't be deleted, already booked", ErrorType = ErrorType.Conflict };
-            }
+            var today = DateOnly.FromDateTime(DateTime.Now);
+            var activeBookedSlots = await unitOfWork.Slots.GetAllByPropertyAsync(
+                s => s.SourceAppointmentId == appointment.Id && s.Status == SlotStatus.Booked && s.Date >= today);
+
+            if (activeBookedSlots.Any())
+                return new ResponseModel<Appointment> { Message = "Can't be deleted, has upcoming booked appointments", ErrorType = ErrorType.Conflict };
 
             try
             {
                 unitOfWork.Appointments.Delete(appointment);
+
+                unitOfWork.Complete();
             }
             catch (DbUpdateException ex)
             {
@@ -167,11 +167,90 @@ namespace Service
                 return new ResponseModel<Appointment> { Message = "Something went wrong.", ErrorType = ErrorType.Unexpected };
             }
 
-            unitOfWork.Complete();
-
             logger.LogInformation("Doctor {DoctorId} deleted appointment {AppointmentId}", doctorId, appointmentId);
 
             return new ResponseModel<Appointment> { Success = true, Message = "Appointment is deleted successfully.", Data = appointment };
+        }
+
+        private const int SlotGenerationWeeks = 4;
+
+        private static readonly Dictionary<Days, DayOfWeek> DaysMap = new()
+        {
+            [Days.Saturday] = DayOfWeek.Saturday,
+            [Days.Sunday] = DayOfWeek.Sunday,
+            [Days.Monday] = DayOfWeek.Monday,
+            [Days.Tuesday] = DayOfWeek.Tuesday,
+            [Days.Wednesday] = DayOfWeek.Wednesday,
+            [Days.Thursday] = DayOfWeek.Thursday,
+            [Days.Friday] = DayOfWeek.Friday,
+        };
+
+        private List<AppointmentSlot> BuildSlotsForTemplate(Appointment appointment, string doctorId)
+        {
+            var slots = new List<AppointmentSlot>();
+
+            var today = DateOnly.FromDateTime(DateTime.Now);
+            var targetDayOfWeek = DaysMap[appointment.Days];
+
+            var firstOccurrence = today;
+            while (firstOccurrence.DayOfWeek != targetDayOfWeek)
+                firstOccurrence = firstOccurrence.AddDays(1);
+
+            for (int week = 0; week < SlotGenerationWeeks; week++)
+            {
+                var date = firstOccurrence.AddDays(week * 7);
+
+                foreach (var dayTime in appointment.Time)
+                {
+                    slots.Add(new AppointmentSlot
+                    {
+                        Date = date,
+                        Time = dayTime.Time,
+                        Price = appointment.Price,
+                        Status = SlotStatus.Available,
+                        DoctorId = doctorId
+                    });
+                }
+            }
+
+            return slots;
+        }
+
+        private async Task GenerateSlotsAsync(Appointment appointment, string doctorId)
+        {
+            foreach (var slot in BuildSlotsForTemplate(appointment, doctorId))
+            {
+                slot.SourceAppointment = appointment;
+                await unitOfWork.Slots.CreateAsync(slot);
+            }
+        }
+
+        private async Task RegenerateSlotsAsync(Appointment appointment, string doctorId)
+        {
+            var today = DateOnly.FromDateTime(DateTime.Now);
+
+            var staleSlots = (await unitOfWork.Slots.GetAllByPropertyAsync(
+                s => s.SourceAppointmentId == appointment.Id && s.Status == SlotStatus.Available && s.Date >= today)).ToList();
+
+            foreach (var stale in staleSlots)
+                unitOfWork.Slots.Delete(stale);
+
+            var staleIds = staleSlots.Select(s => s.Id).ToHashSet();
+
+            var occupied = (await unitOfWork.Slots.GetAllByPropertyAsync(
+                    s => s.DoctorId == doctorId && s.Date >= today))
+                .Where(s => !staleIds.Contains(s.Id))
+                .Select(s => (s.Date, s.Time))
+                .ToHashSet();
+
+            foreach (var slot in BuildSlotsForTemplate(appointment, doctorId))
+            {
+                if (occupied.Contains((slot.Date, slot.Time)))
+                    continue;
+
+                slot.SourceAppointment = appointment;
+                await unitOfWork.Slots.CreateAsync(slot);
+            }
         }
     }
 }
