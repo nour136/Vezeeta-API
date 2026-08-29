@@ -151,7 +151,40 @@ namespace Service.Tests
         }
 
         [Fact]
-        public async Task ConfirmCheckUpsAsync_ReturnsNotFound_WhenSlotBelongsToDifferentDoctor()
+        public async Task ConfirmBookingAsync_Succeeds_FromPending()
+        {
+            var (service, uow) = CreateService();
+
+            var slot = new AppointmentSlot { Id = 1, DoctorId = DoctorId, Status = SlotStatus.Booked, Date = DateOnly.FromDateTime(DateTime.Now.AddDays(1)), Time = new TimeOnly(9, 0) };
+            var request = new Request { Id = 1, RequestState = RequestState.Pending };
+            var booking = new Booking { Id = 1, Slot = slot, Request = request };
+            uow.BookingsFake.Items.Add(booking);
+
+            var result = await service.ConfirmBookingAsync(DoctorId, booking.Id);
+
+            Assert.True(result.Success);
+            Assert.Equal(RequestState.Confirmed, request.RequestState);
+        }
+
+        [Fact]
+        public async Task ConfirmBookingAsync_ReturnsConflict_WhenAlreadyConfirmed()
+        {
+            var (service, uow) = CreateService();
+
+            var slot = new AppointmentSlot { Id = 1, DoctorId = DoctorId, Status = SlotStatus.Booked, Date = DateOnly.FromDateTime(DateTime.Now.AddDays(1)), Time = new TimeOnly(9, 0) };
+            var request = new Request { Id = 1, RequestState = RequestState.Confirmed };
+            var booking = new Booking { Id = 1, Slot = slot, Request = request };
+            uow.BookingsFake.Items.Add(booking);
+
+            var result = await service.ConfirmBookingAsync(DoctorId, booking.Id);
+
+            Assert.False(result.Success);
+            Assert.Equal(ErrorType.Conflict, result.ErrorType);
+            Assert.Equal(RequestState.Confirmed, request.RequestState);
+        }
+
+        [Fact]
+        public async Task ConfirmBookingAsync_ReturnsNotFound_WhenSlotBelongsToDifferentDoctor()
         {
             var (service, uow) = CreateService();
 
@@ -160,7 +193,7 @@ namespace Service.Tests
             var booking = new Booking { Id = 1, Slot = slot, Request = request };
             uow.BookingsFake.Items.Add(booking);
 
-            var result = await service.ConfirmCheckUpsAsync(DoctorId, booking.Id);
+            var result = await service.ConfirmBookingAsync(DoctorId, booking.Id);
 
             Assert.False(result.Success);
             Assert.Equal(ErrorType.NotFound, result.ErrorType);
@@ -168,7 +201,7 @@ namespace Service.Tests
         }
 
         [Fact]
-        public async Task ConfirmCheckUpsAsync_MarksCompleted_AndKeepsBookingRow()
+        public async Task CompleteBookingAsync_ReturnsConflict_WhenNotYetConfirmed()
         {
             var (service, uow) = CreateService();
 
@@ -177,11 +210,80 @@ namespace Service.Tests
             var booking = new Booking { Id = 1, Slot = slot, Request = request };
             uow.BookingsFake.Items.Add(booking);
 
-            var result = await service.ConfirmCheckUpsAsync(DoctorId, booking.Id);
+            var result = await service.CompleteBookingAsync(DoctorId, booking.Id);
+
+            Assert.False(result.Success);
+            Assert.Equal(ErrorType.Conflict, result.ErrorType);
+            Assert.Equal(RequestState.Pending, request.RequestState);
+        }
+
+        [Fact]
+        public async Task CompleteBookingAsync_Succeeds_AndKeepsBookingRow_WhenAlreadyConfirmed()
+        {
+            var (service, uow) = CreateService();
+
+            var slot = new AppointmentSlot { Id = 1, DoctorId = DoctorId, Status = SlotStatus.Booked, Date = DateOnly.FromDateTime(DateTime.Now), Time = new TimeOnly(9, 0) };
+            var request = new Request { Id = 1, RequestState = RequestState.Confirmed };
+            var booking = new Booking { Id = 1, Slot = slot, Request = request };
+            uow.BookingsFake.Items.Add(booking);
+
+            var result = await service.CompleteBookingAsync(DoctorId, booking.Id);
 
             Assert.True(result.Success);
             Assert.Equal(RequestState.Completed, request.RequestState);
             Assert.Contains(booking, uow.BookingsFake.Items); // never deleted
+        }
+
+        [Fact]
+        public async Task CompleteBookingAsync_ReturnsNotFound_WhenSlotBelongsToDifferentDoctor()
+        {
+            var (service, uow) = CreateService();
+
+            var slot = new AppointmentSlot { Id = 1, DoctorId = "someone-else", Status = SlotStatus.Booked, Date = DateOnly.FromDateTime(DateTime.Now), Time = new TimeOnly(9, 0) };
+            var request = new Request { Id = 1, RequestState = RequestState.Confirmed };
+            var booking = new Booking { Id = 1, Slot = slot, Request = request };
+            uow.BookingsFake.Items.Add(booking);
+
+            var result = await service.CompleteBookingAsync(DoctorId, booking.Id);
+
+            Assert.False(result.Success);
+            Assert.Equal(ErrorType.NotFound, result.ErrorType);
+            Assert.Equal(RequestState.Confirmed, request.RequestState);
+        }
+
+        [Fact]
+        public async Task DoctorCancelBookingAsync_FreesFutureSlot_AndSetsCancelled()
+        {
+            var (service, uow) = CreateService();
+
+            var slot = new AppointmentSlot { Id = 1, DoctorId = DoctorId, Status = SlotStatus.Booked, Date = DateOnly.FromDateTime(DateTime.Now.AddDays(1)), Time = new TimeOnly(9, 0) };
+            var request = new Request { Id = 1, RequestState = RequestState.Confirmed };
+            var booking = new Booking { Id = 1, Slot = slot, Request = request };
+            uow.BookingsFake.Items.Add(booking);
+
+            var result = await service.CancelBookingAsync(DoctorId, booking.Id);
+
+            Assert.True(result.Success);
+            Assert.Equal(RequestState.Cancelled, request.RequestState);
+            Assert.Equal(SlotStatus.Available, slot.Status);
+        }
+
+        [Fact]
+        public async Task DoctorCancelBookingAsync_ReturnsConflict_WhenAlreadyCompleted()
+        {
+            var (service, uow) = CreateService();
+
+            var slot = new AppointmentSlot { Id = 1, DoctorId = DoctorId, Status = SlotStatus.Booked, Date = DateOnly.FromDateTime(DateTime.Now.AddDays(-1)), Time = new TimeOnly(9, 0) };
+            var request = new Request { Id = 1, RequestState = RequestState.Completed };
+            var booking = new Booking { Id = 1, Slot = slot, Request = request };
+            uow.BookingsFake.Items.Add(booking);
+
+            var result = await service.CancelBookingAsync(DoctorId, booking.Id);
+
+            Assert.False(result.Success);
+            Assert.Equal(ErrorType.Conflict, result.ErrorType);
+            Assert.Equal(RequestState.Completed, request.RequestState);
+            Assert.Equal(SlotStatus.Booked, slot.Status); // untouched
         }
     }
 }

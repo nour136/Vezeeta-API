@@ -44,7 +44,7 @@ namespace Service
 
             return new ResponseModel<IEnumerable<AppointmentDTO>> { Success = true, Message = "Appointments retrieved.", Data = mapper.Map<IEnumerable<AppointmentDTO>>(appointments), MetaData = meta };
         }
-        public async Task<ResponseModel<string>> ConfirmCheckUpsAsync(string doctorId, int bookingId)
+        public async Task<ResponseModel<string>> ConfirmBookingAsync(string doctorId, int bookingId)
         {
             var booking = await unitOfWork.Bookings.GetByIdAsync(bookingId);
 
@@ -55,6 +55,40 @@ namespace Service
                 return new ResponseModel<string> { Message = "No such booking with that id", ErrorType = ErrorType.NotFound };
 
             var request = booking.Request;
+
+            if (!BookingTransitions.IsAllowed(request.RequestState, RequestState.Confirmed, BookingTransitions.Actor.Doctor))
+                return new ResponseModel<string> { Message = $"Booking can't be confirmed from its current state ({request.RequestState}).", ErrorType = ErrorType.Conflict };
+
+            try
+            {
+                request.RequestState = RequestState.Confirmed;
+                unitOfWork.Complete();
+            }
+            catch (DbUpdateException ex)
+            {
+                logger.LogError(ex, "Failed to confirm booking {BookingId} for doctor {DoctorId}", bookingId, doctorId);
+                return new ResponseModel<string> { Message = "Something went wrong.", ErrorType = ErrorType.Unexpected };
+            }
+
+            logger.LogInformation("Doctor {DoctorId} confirmed booking {BookingId}", doctorId, bookingId);
+
+            return new ResponseModel<string> { Message = "Booking confirmed", Success = true, Data = "" };
+        }
+
+        public async Task<ResponseModel<string>> CompleteBookingAsync(string doctorId, int bookingId)
+        {
+            var booking = await unitOfWork.Bookings.GetByIdAsync(bookingId);
+
+            if (booking is null)
+                return new ResponseModel<string> { Message = "No such booking with that id", ErrorType = ErrorType.NotFound };
+
+            if (booking.Slot.DoctorId != doctorId)
+                return new ResponseModel<string> { Message = "No such booking with that id", ErrorType = ErrorType.NotFound };
+
+            var request = booking.Request;
+
+            if (!BookingTransitions.IsAllowed(request.RequestState, RequestState.Completed, BookingTransitions.Actor.Doctor))
+                return new ResponseModel<string> { Message = $"Booking can't be completed from its current state ({request.RequestState}). It must be Confirmed first.", ErrorType = ErrorType.Conflict };
 
             try
             {
@@ -70,6 +104,41 @@ namespace Service
             logger.LogInformation("Doctor {DoctorId} marked booking {BookingId} as completed", doctorId, bookingId);
 
             return new ResponseModel<string> { Message = "Booking marked as completed", Success = true, Data = "" };
+        }
+
+        public async Task<ResponseModel<string>> CancelBookingAsync(string doctorId, int bookingId)
+        {
+            var booking = await unitOfWork.Bookings.GetByIdAsync(bookingId);
+
+            if (booking is null)
+                return new ResponseModel<string> { Message = "No such booking with that id", ErrorType = ErrorType.NotFound };
+
+            if (booking.Slot.DoctorId != doctorId)
+                return new ResponseModel<string> { Message = "No such booking with that id", ErrorType = ErrorType.NotFound };
+
+            var request = booking.Request;
+            var slot = booking.Slot;
+
+            if (!BookingTransitions.IsAllowed(request.RequestState, RequestState.Cancelled, BookingTransitions.Actor.Doctor))
+                return new ResponseModel<string> { Message = $"Booking can't be cancelled from its current state ({request.RequestState}).", ErrorType = ErrorType.Conflict };
+
+            if (slot.Date.ToDateTime(slot.Time) >= DateTime.Now)
+                slot.Status = SlotStatus.Available;
+
+            try
+            {
+                request.RequestState = RequestState.Cancelled;
+                unitOfWork.Complete();
+            }
+            catch (DbUpdateException ex)
+            {
+                logger.LogError(ex, "Failed to cancel booking {BookingId} for doctor {DoctorId}", bookingId, doctorId);
+                return new ResponseModel<string> { Message = "Something went wrong.", ErrorType = ErrorType.Unexpected };
+            }
+
+            logger.LogInformation("Doctor {DoctorId} cancelled booking {BookingId}", doctorId, bookingId);
+
+            return new ResponseModel<string> { Message = "Booking cancelled", Success = true, Data = "" };
         }
         public async Task<ResponseModel<Appointment>> CreateAppointmentAsync(AppointmentDTO appointmentDTO, string doctorId)
         {

@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Domain;
 using Domain.Repositories;
 using Domain.Services;
+using Domain.Utilities;
 using Microsoft.EntityFrameworkCore;
 using Repository;
 using System;
@@ -13,7 +14,6 @@ using System.Text;
 using System.Threading.Tasks;
 using Domain.DTOs.PatientDTOs;
 using Domain.Enums;
-using Domain.Utilities;
 using static Azure.Core.HttpHeader;
 
 namespace Service
@@ -150,6 +150,9 @@ namespace Service
 
             var request = booking.Request;
             var slot = booking.Slot;
+
+            if (!BookingTransitions.IsAllowed(request.RequestState, RequestState.Cancelled, BookingTransitions.Actor.Patient))
+                return new ResponseModel<Booking> { Message = $"Booking can't be cancelled from its current state ({request.RequestState}).", ErrorType = ErrorType.Conflict };
 
             if (slot.Date.ToDateTime(slot.Time) >= DateTime.Now)
                 slot.Status = SlotStatus.Available;

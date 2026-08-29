@@ -52,12 +52,34 @@ namespace Vezeeta.API.Controllers
         }
 
         [Authorize(Roles = "Doctor")]
-        [HttpPut("confirmCheckUp/id={bookingId}")]
-        public async Task<IActionResult> ConfirmCheckUpsAsync(int bookingId)
+        [HttpPut("confirmBooking/id={bookingId}")]
+        public async Task<IActionResult> ConfirmBookingAsync(int bookingId)
         {
             var userId = User.FindFirst("uid")?.Value;
 
-            var result = await doctorService.ConfirmCheckUpsAsync(userId, bookingId);
+            var result = await doctorService.ConfirmBookingAsync(userId, bookingId);
+
+            return result.ToActionResult();
+        }
+
+        [Authorize(Roles = "Doctor")]
+        [HttpPut("completeBooking/id={bookingId}")]
+        public async Task<IActionResult> CompleteBookingAsync(int bookingId)
+        {
+            var userId = User.FindFirst("uid")?.Value;
+
+            var result = await doctorService.CompleteBookingAsync(userId, bookingId);
+
+            return result.ToActionResult();
+        }
+
+        [Authorize(Roles = "Doctor")]
+        [HttpDelete("cancelBooking/id={bookingId}")]
+        public async Task<IActionResult> CancelBookingAsync(int bookingId)
+        {
+            var userId = User.FindFirst("uid")?.Value;
+
+            var result = await doctorService.CancelBookingAsync(userId, bookingId);
 
             return result.ToActionResult();
         }

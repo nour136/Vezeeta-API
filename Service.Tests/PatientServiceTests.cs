@@ -55,6 +55,17 @@ namespace Service.Tests
             Doctor = new ApplicationUser { Id = doctorId, FirstName = "Test", LastName = "Doctor" }
         };
 
+        private static async Task<Booking> SeedOwnedBooking(TestUnitOfWork uow, AppointmentSlot slot, RequestState state)
+        {
+            var booking = new Booking { Id = 1, Slot = slot, Request = new Request { Id = 1, RequestState = state } };
+            uow.BookingsFake.Items.Add(booking);
+
+            var patient = await uow.AuthRepository.GetUserByIdAsync(PatientId);
+            patient.Bookings!.Add(booking);
+
+            return booking;
+        }
+
         [Fact]
         public async Task BookAppointmentAsync_ReturnsNotFound_WhenSlotDoesNotExist()
         {
@@ -106,6 +117,7 @@ namespace Service.Tests
             Assert.Equal(SlotStatus.Booked, slot.Status);
             Assert.Single(uow.BookingsFake.Items);
             Assert.Equal(slot.Id, uow.BookingsFake.Items[0].Slot.Id);
+            Assert.Equal(RequestState.Pending, uow.BookingsFake.Items[0].Request.RequestState);
         }
 
         [Fact]
@@ -115,7 +127,6 @@ namespace Service.Tests
             var slot = MakeSlot(1, DateOnly.FromDateTime(DateTime.Now.AddDays(1)), new TimeOnly(9, 0), SlotStatus.Booked);
             var booking = new Booking { Id = 1, Slot = slot, Request = new Request { Id = 1, RequestState = RequestState.Pending } };
             uow.BookingsFake.Items.Add(booking);
-            // Note: patient.Bookings (from CreateService's mock) is empty, so this booking isn't "theirs".
 
             var result = await service.CancelBookingAsync(PatientId, booking.Id);
 
@@ -124,15 +135,11 @@ namespace Service.Tests
         }
 
         [Fact]
-        public async Task CancelBookingAsync_FreesSlot_WhenSlotIsStillInTheFuture()
+        public async Task CancelBookingAsync_FreesSlot_WhenPendingAndStillInTheFuture()
         {
             var (service, uow) = CreateService();
             var slot = MakeSlot(1, DateOnly.FromDateTime(DateTime.Now.AddDays(1)), new TimeOnly(9, 0), SlotStatus.Booked);
-            var booking = new Booking { Id = 1, Slot = slot, Request = new Request { Id = 1, RequestState = RequestState.Pending } };
-            uow.BookingsFake.Items.Add(booking);
-
-            var patient = await uow.AuthRepository.GetUserByIdAsync(PatientId);
-            patient.Bookings!.Add(booking);
+            var booking = await SeedOwnedBooking(uow, slot, RequestState.Pending);
 
             var result = await service.CancelBookingAsync(PatientId, booking.Id);
 
@@ -143,15 +150,39 @@ namespace Service.Tests
         }
 
         [Fact]
+        public async Task CancelBookingAsync_Succeeds_WhenConfirmed()
+        {
+            var (service, uow) = CreateService();
+            var slot = MakeSlot(1, DateOnly.FromDateTime(DateTime.Now.AddDays(1)), new TimeOnly(9, 0), SlotStatus.Booked);
+            var booking = await SeedOwnedBooking(uow, slot, RequestState.Confirmed);
+
+            var result = await service.CancelBookingAsync(PatientId, booking.Id);
+
+            Assert.True(result.Success);
+            Assert.Equal(RequestState.Cancelled, booking.Request.RequestState);
+        }
+
+        [Fact]
+        public async Task CancelBookingAsync_ReturnsConflict_WhenAlreadyCompleted()
+        {
+            var (service, uow) = CreateService();
+            var slot = MakeSlot(1, DateOnly.FromDateTime(DateTime.Now.AddDays(-1)), new TimeOnly(9, 0), SlotStatus.Booked);
+            var booking = await SeedOwnedBooking(uow, slot, RequestState.Completed);
+
+            var result = await service.CancelBookingAsync(PatientId, booking.Id);
+
+            Assert.False(result.Success);
+            Assert.Equal(ErrorType.Conflict, result.ErrorType);
+            Assert.Equal(RequestState.Completed, booking.Request.RequestState);
+            Assert.Equal(SlotStatus.Booked, slot.Status); // untouched
+        }
+
+        [Fact]
         public async Task CancelBookingAsync_DoesNotFreeSlot_WhenSlotIsInThePast()
         {
             var (service, uow) = CreateService();
             var slot = MakeSlot(1, DateOnly.FromDateTime(DateTime.Now.AddDays(-1)), new TimeOnly(9, 0), SlotStatus.Booked);
-            var booking = new Booking { Id = 1, Slot = slot, Request = new Request { Id = 1, RequestState = RequestState.Pending } };
-            uow.BookingsFake.Items.Add(booking);
-
-            var patient = await uow.AuthRepository.GetUserByIdAsync(PatientId);
-            patient.Bookings!.Add(booking);
+            var booking = await SeedOwnedBooking(uow, slot, RequestState.Confirmed);
 
             var result = await service.CancelBookingAsync(PatientId, booking.Id);
 
