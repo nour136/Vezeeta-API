@@ -1,5 +1,6 @@
 using AutoMapper;
 using Domain;
+using Microsoft.Extensions.Logging;
 using Domain.DTOs.AdminDTOs;
 using Domain.Models;
 using Domain.Repositories;
@@ -20,11 +21,13 @@ namespace Service
     {
         private readonly IUnitOfWork unitOfWork;
         private readonly IMapper mapper;
+        private readonly ILogger<DiscountCodeService> logger;
 
-        public DiscountCodeService(IUnitOfWork unitOfWork, IMapper mapper)
+        public DiscountCodeService(IUnitOfWork unitOfWork, IMapper mapper, ILogger<DiscountCodeService> logger)
         {
             this.unitOfWork = unitOfWork;
             this.mapper = mapper;
+            this.logger = logger;
         }
 
         public async Task<ResponseModel<DiscountCode>> AddDiscountCodeAsync(DiscountCodeDTO codeDTO)
@@ -37,10 +40,13 @@ namespace Service
             {
                 unitOfWork.Complete();
             }
-            catch (DbUpdateException)
+            catch (DbUpdateException ex)
             {
+                logger.LogError(ex, "Failed to add discount code {Name}", codeDTO.Name);
                 return new ResponseModel<DiscountCode> { Message = "Something went wrong", ErrorType = ErrorType.Unexpected };
             }
+
+            logger.LogInformation("Discount code {Name} added", codeDTO.Name);
 
             return new ResponseModel<DiscountCode> { Success = true, Message = "DiscountCode is added successfully" };
         }
@@ -73,8 +79,9 @@ namespace Service
             {
                 unitOfWork.Complete();
             }
-            catch (DbUpdateException)
+            catch (DbUpdateException ex)
             {
+                logger.LogError(ex, "Failed to deactivate discount code {CodeId}", codeId);
                 return new ResponseModel<DiscountCode> { Message = "Something went wrong.", ErrorType = ErrorType.Unexpected };
             }
 
@@ -93,8 +100,9 @@ namespace Service
             {
                 unitOfWork.Complete();
             }
-            catch (DbUpdateException)
+            catch (DbUpdateException ex)
             {
+                logger.LogError(ex, "Failed to delete discount code {CodeId}", codeId);
                 return new ResponseModel<DiscountCode> { Message = "Something went wrong.", ErrorType = ErrorType.Unexpected };
             }
 
