@@ -31,9 +31,10 @@ namespace Domain.Enums
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public enum RequestState
     {
-        Pending,
-        Completed,
-        Cancelled
+        Pending = 0,
+        Completed = 1,
+        Cancelled = 2,
+        Confirmed = 3
     }
 
     [JsonConverter(typeof(JsonStringEnumConverter))]
