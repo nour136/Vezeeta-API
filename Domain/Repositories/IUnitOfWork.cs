@@ -18,6 +18,7 @@ namespace Domain.Repositories
         IBaseRepository<AppointmentSlot> Slots { get; }
         IBaseRepository<DiscountCode> DiscountCodes { get; }
         IBaseRepository<ExpiredCode> ExpiredCodes { get; }
+        IBaseRepository<Review> Reviews { get; }
         
         int Complete();
     }

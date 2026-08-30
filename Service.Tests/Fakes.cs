@@ -56,6 +56,7 @@ namespace Service.Tests
         public FakeRepository<AppointmentSlot> SlotsFake { get; } = new(s => s.Id);
         public FakeRepository<DiscountCode> DiscountCodesFake { get; } = new(d => d.Id);
         public FakeRepository<ExpiredCode> ExpiredCodesFake { get; } = new(e => e.Id);
+        public FakeRepository<Review> ReviewsFake { get; } = new(r => r.Id);
 
         public IUserRepository AuthRepository { get; set; } = null!;
 
@@ -67,6 +68,7 @@ namespace Service.Tests
         public IBaseRepository<AppointmentSlot> Slots => SlotsFake;
         public IBaseRepository<DiscountCode> DiscountCodes => DiscountCodesFake;
         public IBaseRepository<ExpiredCode> ExpiredCodes => ExpiredCodesFake;
+        public IBaseRepository<Review> Reviews => ReviewsFake;
 
         public int Complete() => 1;
 
