@@ -26,7 +26,7 @@ namespace Repository
         public UnitOfWork(ApplicationDbContext context, UserManager<ApplicationUser> userManager, ILogger<UserRepository> userRepositoryLogger)
         {
             this.context = context;
-            AuthRepository = new UserRepository(userManager, userRepositoryLogger);
+            AuthRepository = new UserRepository(context, userManager, userRepositoryLogger);
             Appointments = new BaseRepository<Appointment>(context);
             Bookings = new BaseRepository<Booking>(context);
             Specializations = new BaseRepository<Specialization>(context);
