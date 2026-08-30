@@ -30,6 +30,31 @@ namespace Repository
             modelBuilder.Entity<Booking>()
                 .HasIndex(b => b.SlotId)
                 .IsUnique();
+
+            modelBuilder.Entity<Review>()
+                .HasOne(r => r.Booking)
+                .WithMany()
+                .HasForeignKey(r => r.BookingId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Review>()
+                .HasOne(r => r.Patient)
+                .WithMany()
+                .HasForeignKey(r => r.PatientId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Review>()
+                .HasOne(r => r.Doctor)
+                .WithMany()
+                .HasForeignKey(r => r.DoctorId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Review>()
+                .HasIndex(r => r.BookingId)
+                .IsUnique();
+
+            modelBuilder.Entity<Review>()
+                .ToTable(t => t.HasCheckConstraint("CK_Review_Rating", "[Rating] BETWEEN 1 AND 5"));
         }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
@@ -47,5 +72,6 @@ namespace Repository
         public DbSet<Specialization> Specializations { get; set; }
         public DbSet<DiscountCode> Discounts { get; set; }
         public DbSet<ExpiredCode> ExpiredCodes { get; set; }
+        public DbSet<Review> Reviews { get; set; }
     }
 }

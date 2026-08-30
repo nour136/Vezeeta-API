@@ -21,6 +21,7 @@ namespace Repository
         public IBaseRepository<AppointmentSlot> Slots { get; private set; }
         public IBaseRepository<DiscountCode> DiscountCodes { get; private set; }
         public IBaseRepository<ExpiredCode> ExpiredCodes { get; private set; }
+        public IBaseRepository<Review> Reviews { get; private set; }
 
         public UnitOfWork(ApplicationDbContext context, UserManager<ApplicationUser> userManager, ILogger<UserRepository> userRepositoryLogger)
         {
@@ -34,6 +35,7 @@ namespace Repository
             Slots = new BaseRepository<AppointmentSlot>(context);
             DiscountCodes = new BaseRepository<DiscountCode>(context);
             ExpiredCodes = new BaseRepository<ExpiredCode>(context);
+            Reviews = new BaseRepository<Review>(context);
         }
 
         public int Complete()
