@@ -1,4 +1,4 @@
-﻿using Domain.Models;
+using Domain.Models;
 using Domain;
 using System.Security.Claims;
 using Domain.DTOs.AuthDTOs;
@@ -16,6 +16,9 @@ namespace Domain.Repositories
         Task<IList<Claim>> GetClaimsAsync(ApplicationUser user);
         Task<IList<string>> GetRolesAsync(ApplicationUser user);
         Task<IEnumerable<ApplicationUser>> GetUsersInRole(string role, string? search, int page = 1, int pageSize = 5);
+        Task<(IEnumerable<DoctorSearchResult> Results, int TotalCount)> SearchDoctorsAsync(
+            string? search, int? specializationId, int? minPrice, int? maxPrice, double? minRating,
+            string? sortBy, int page = 1, int pageSize = 5);
         Task<bool> EmailExistAsync(string email);
         Task<bool> UserNameExistAsync(string userName);
         Task<bool> CheckPasswordAsync(ApplicationUser user, string password);

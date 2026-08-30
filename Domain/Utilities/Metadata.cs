@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -12,5 +12,6 @@ namespace Domain.Utilities
         public int PageSize { get; set; }
         public int Next { get; set; }
         public int Previous { get; set; }
+        public int TotalCount { get; set; }
     }
 }

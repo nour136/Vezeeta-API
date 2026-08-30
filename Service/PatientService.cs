@@ -122,6 +122,37 @@ namespace Service
 
             return new ResponseModel<IEnumerable<AllDoctorsDTO>> { Message = "Doctors and thier appointments are retrieved.", Success = true, Data = doctorsAppointments, MetaData = meta };
         }
+        public async Task<ResponseModel<IEnumerable<DoctorSearchResultDTO>>> SearchDoctorsAsync(
+            string? search, int? specializationId, int? minPrice, int? maxPrice, double? minRating,
+            string? sortBy, int page = 1, int pageSize = 5)
+        {
+            var (results, totalCount) = await unitOfWork.AuthRepository.SearchDoctorsAsync(
+                search, specializationId, minPrice, maxPrice, minRating, sortBy, page, pageSize);
+
+            var doctorDTOs = results.Select(r => new DoctorSearchResultDTO
+            {
+                Id = r.Doctor.Id,
+                FirstName = r.Doctor.FirstName,
+                LastName = r.Doctor.LastName,
+                Specialization = r.Doctor.Specialize?.Name,
+                Image = imageService.GenerateUrl(r.Doctor.Image),
+                AverageRating = r.AverageRating.HasValue ? Math.Round(r.AverageRating.Value, 2) : 0,
+                ReviewCount = r.ReviewCount,
+                MinPrice = r.MinPrice,
+                MaxPrice = r.MaxPrice
+            });
+
+            var meta = new Metadata
+            {
+                Page = page,
+                PageSize = pageSize,
+                Next = page + 1,
+                Previous = page - 1,
+                TotalCount = totalCount
+            };
+
+            return new ResponseModel<IEnumerable<DoctorSearchResultDTO>> { Success = true, Message = "Doctors retrieved.", Data = doctorDTOs, MetaData = meta };
+        }
         public async Task<ResponseModel<IEnumerable<BookingDTO>>> GetAllBookingsAsync(string patientId, int page = 1, int pageSize = 5)
         {
             var bookings = await unitOfWork.Bookings.GetAllPaginatedFilteredAsync(b => b.Patient.Id == patientId, page, pageSize);

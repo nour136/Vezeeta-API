@@ -60,6 +60,17 @@ namespace Vezeeta.API.Controllers
         }
 
         [Authorize(Roles = "Patient")]
+        [HttpGet("searchDoctors")]
+        public async Task<IActionResult> SearchDoctorsAsync(
+            string? search, int? specializationId, int? minPrice, int? maxPrice, double? minRating,
+            string? sortBy, int page = 1, int pageSize = 5)
+        {
+            var result = await patientService.SearchDoctorsAsync(search, specializationId, minPrice, maxPrice, minRating, sortBy, page, pageSize);
+
+            return result.ToActionResult();
+        }
+
+        [Authorize(Roles = "Patient")]
         [HttpGet("getAvailableSlots/doctorId={doctorId}")]
         public async Task<IActionResult> GetAvailableSlotsAsync(string doctorId)
         {
