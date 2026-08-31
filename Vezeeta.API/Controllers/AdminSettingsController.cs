@@ -1,5 +1,6 @@
 using Domain.DTOs.AdminDTOs;
 using Domain.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Vezeeta.API.Extensions;
@@ -8,6 +9,7 @@ namespace Vezeeta.API.Controllers
 {
     [Route("admin/settings")]
     [ApiController]
+    [Authorize(Roles = "Admin")]
     public class AdminSettingsController : ControllerBase
     {
         private readonly IDiscountCodeService discountCodeService;

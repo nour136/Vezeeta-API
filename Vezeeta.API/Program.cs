@@ -17,7 +17,7 @@ namespace Vezeeta.API
 {
     public class Program
     {
-        public static void Main(string[] args)
+        public static async Task Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
 
@@ -123,7 +123,75 @@ namespace Vezeeta.API
 
             app.MapControllers();
 
-            app.Run();
+            // One-time admin bootstrap: there's no self-registration or dedicated login flow
+            // for Admin anywhere in this API, so without this, a fresh database - including a
+            // fresh Docker container - has three roles seeded by migration but no way for
+            // anyone to ever actually become an Admin. Reads credentials from configuration
+            // (environment variables in Docker/production, user secrets locally) rather than
+            // a hardcoded default, since this account has full admin access.
+            using (var scope = app.Services.CreateScope())
+            {
+                await SeedDefaultAdminAsync(scope.ServiceProvider, app.Configuration, app.Logger);
+            }
+
+            await app.RunAsync();
+        }
+
+        private static async Task SeedDefaultAdminAsync(IServiceProvider services, IConfiguration configuration, ILogger logger)
+        {
+            var adminEmail = configuration["Admin:Email"];
+            var adminPassword = configuration["Admin:Password"];
+
+            if (string.IsNullOrWhiteSpace(adminEmail) || string.IsNullOrWhiteSpace(adminPassword))
+            {
+                logger.LogWarning(
+                    "Admin:Email / Admin:Password are not configured - skipping default admin bootstrap. " +
+                    "No Admin account exists unless one was created previously. Set these via the " +
+                    "ADMIN__EMAIL / ADMIN__PASSWORD environment variables (Docker) or user secrets (local dev).");
+                return;
+            }
+
+            var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
+
+            // Never overwrite or duplicate - if any Admin already exists, this is a no-op on
+            // every subsequent restart, not just the first one.
+            var existingAdmins = await userManager.GetUsersInRoleAsync("Admin");
+            if (existingAdmins.Any())
+                return;
+
+            var admin = await userManager.FindByEmailAsync(adminEmail);
+
+            if (admin is null)
+            {
+                admin = new ApplicationUser
+                {
+                    UserName = adminEmail,
+                    Email = adminEmail,
+                    FirstName = "Admin",
+                    LastName = "Account",
+                    Phone = "0000000000",
+                    EmailConfirmed = true
+                };
+
+                // Must satisfy Identity's default password policy (min length 6, upper, lower,
+                // digit, non-alphanumeric) since AddIdentity<>() below uses default options.
+                var createResult = await userManager.CreateAsync(admin, adminPassword);
+
+                if (!createResult.Succeeded)
+                {
+                    logger.LogError("Failed to create default admin account: {Errors}",
+                        string.Join(", ", createResult.Errors.Select(e => e.Description)));
+                    return;
+                }
+            }
+
+            var roleResult = await userManager.AddToRoleAsync(admin, "Admin");
+
+            if (roleResult.Succeeded)
+                logger.LogInformation("Default admin account is ready ({Email})", adminEmail);
+            else
+                logger.LogError("Failed to add default admin to the Admin role: {Errors}",
+                    string.Join(", ", roleResult.Errors.Select(e => e.Description)));
         }
     }
 }
