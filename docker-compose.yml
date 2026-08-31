@@ -1,0 +1,46 @@
+﻿version: "3.9"
+
+services:
+  vezeeta.api:
+    build:
+      context: .
+      dockerfile: Vezeeta.API/Dockerfile
+    container_name: vezeeta-api
+    ports:
+      - "8080:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__VezeetaDB=Server=db;Database=Vezzeta;User Id=sa;Password=YourStrong!Passw0rd;TrustServerCertificate=True;
+      - ADMIN__EMAIL=admin@vezeeta.local
+      - ADMIN__PASSWORD=Admin123!
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - vezeeta-network
+
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: vezeeta-sqlserver
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=YourStrong!Passw0rd
+    ports:
+      - "1433:1433"
+    volumes:
+      - vezeeta-sql-data:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -Q 'SELECT 1' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks:
+      - vezeeta-network
+
+volumes:
+  vezeeta-sql-data:
+
+networks:
+  vezeeta-network:
+    driver: bridge
