@@ -1,4 +1,5 @@
 using Domain.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Vezeeta.API.Extensions;
@@ -7,6 +8,7 @@ namespace Vezeeta.API.Controllers
 {
     [Route("admin/patient")]
     [ApiController]
+    [Authorize(Roles = "Admin")]
     public class AdminPatientController : ControllerBase
     {
         private readonly IAdminPatientService adminPatientService;

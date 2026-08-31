@@ -1,6 +1,7 @@
 using Domain;
 using Domain.DTOs.AuthDTOs;
 using Domain.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Service;
@@ -10,6 +11,7 @@ namespace Vezeeta.API.Controllers
 {
     [Route("admin/doctor")]
     [ApiController]
+    [Authorize(Roles = "Admin")]
     public class AdminDoctorController : ControllerBase
     {
         private readonly IAuthService authService;

@@ -1,5 +1,6 @@
-﻿using Domain;
+using Domain;
 using Domain.Repositories;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -9,6 +10,7 @@ namespace Vezeeta.API.Controllers
 {
     [Route("admin/stats")]
     [ApiController]
+    [Authorize(Roles = "Admin")]
     public class AdminStatsController : ControllerBase
     {
         private readonly ApplicationDbContext context;
