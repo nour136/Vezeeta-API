@@ -123,6 +123,19 @@ namespace Vezeeta.API
 
             app.MapControllers();
 
+            // Apply any pending EF Core migrations automatically so a fresh database -
+            // including a brand new Docker container - ends up with the correct schema
+            // without a manual `dotnet ef database update` step. Idempotent: EF Core skips
+            // migrations that are already applied, so this is safe on every restart.
+            // Trade-off: auto-migrating on startup is convenient for a project meant to run
+            // with `docker compose up`, but a team running this against a real production
+            // database would normally want migrations reviewed and applied as a separate,
+            // controlled deploy step instead.
+            using (var migrationScope = app.Services.CreateScope())
+            {
+                var db = migrationScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                await db.Database.MigrateAsync();
+            }
             // One-time admin bootstrap: there's no self-registration or dedicated login flow
             // for Admin anywhere in this API, so without this, a fresh database - including a
             // fresh Docker container - has three roles seeded by migration but no way for

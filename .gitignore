@@ -360,4 +360,8 @@ MigrationBackup/
 .ionide/
 
 # Fody - auto-generated XML schema
-FodyWeavers.xsd
+FodyWeavers.xsd# Local Docker secrets - copy .env.example to .env and fill in real values
+.env
+
+# Accidentally committed SQL Server backup (see README) - untracked going forward
+Vezzeta.bak
