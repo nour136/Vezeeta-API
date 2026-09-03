@@ -1,0 +1,20 @@
+**/.git
+**/.gitignore
+**/.gitattributes
+**/bin
+**/obj
+**/.vs
+**/.vscode
+**/*.user
+**/*.suo
+
+# Stray SQL Server backup file - never belonged in the build context (or the repo)
+Vezzeta.bak
+
+# Test project isn't needed in the runtime image
+Service.Tests/
+
+# Local-only files
+.env
+.env.example
+README.md
