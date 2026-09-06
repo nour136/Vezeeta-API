@@ -38,7 +38,7 @@ namespace Service.Tests
                     return appt;
                 });
 
-            var service = new DoctorService(uow, mapperMock.Object, NullLogger<DoctorService>.Instance);
+            var service = new DoctorService(uow, mapperMock.Object, new FakeNotificationService(), NullLogger<DoctorService>.Instance);
             return (service, uow);
         }
 

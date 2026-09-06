@@ -21,12 +21,14 @@ namespace Service
     {
         private readonly IUnitOfWork unitOfWork;
         private readonly IMapper mapper;
+        private readonly INotificationService notificationService;
         private readonly ILogger<DoctorService> logger;
 
-        public DoctorService(IUnitOfWork unitOfWork, IMapper mapper, ILogger<DoctorService> logger)
+        public DoctorService(IUnitOfWork unitOfWork, IMapper mapper, INotificationService notificationService, ILogger<DoctorService> logger)
         {
             this.unitOfWork = unitOfWork;
             this.mapper = mapper;
+            this.notificationService = notificationService;
             this.logger = logger;
         }
 
@@ -72,6 +74,15 @@ namespace Service
 
             logger.LogInformation("Doctor {DoctorId} confirmed booking {BookingId}", doctorId, bookingId);
 
+            try
+            {
+                await notificationService.NotifyBookingConfirmedAsync(booking);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Booking {BookingId} was confirmed but the notification failed to send", bookingId);
+            }
+
             return new ResponseModel<string> { Message = "Booking confirmed", Success = true, Data = "" };
         }
 
@@ -102,6 +113,15 @@ namespace Service
             }
 
             logger.LogInformation("Doctor {DoctorId} marked booking {BookingId} as completed", doctorId, bookingId);
+
+            try
+            {
+                await notificationService.NotifyBookingCompletedAsync(booking);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Booking {BookingId} was completed but the notification failed to send", bookingId);
+            }
 
             return new ResponseModel<string> { Message = "Booking marked as completed", Success = true, Data = "" };
         }
@@ -137,6 +157,15 @@ namespace Service
             }
 
             logger.LogInformation("Doctor {DoctorId} cancelled booking {BookingId}", doctorId, bookingId);
+
+            try
+            {
+                await notificationService.NotifyBookingCancelledAsync(booking, "Doctor");
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Booking {BookingId} was cancelled but the notification failed to send", bookingId);
+            }
 
             return new ResponseModel<string> { Message = "Booking cancelled", Success = true, Data = "" };
         }

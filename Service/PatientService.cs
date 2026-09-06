@@ -23,13 +23,15 @@ namespace Service
         private readonly IUnitOfWork unitOfWork;
         private readonly IMapper mapper;
         private readonly IImageService imageService;
+        private readonly INotificationService notificationService;
         private readonly ILogger<PatientService> logger;
 
-        public PatientService(IUnitOfWork unitOfWork, IMapper mapper, IImageService imageService, ILogger<PatientService> logger)
+        public PatientService(IUnitOfWork unitOfWork, IMapper mapper, IImageService imageService, INotificationService notificationService, ILogger<PatientService> logger)
         {
             this.unitOfWork = unitOfWork;
             this.mapper = mapper;
             this.imageService = imageService;
+            this.notificationService = notificationService;
             this.logger = logger;
         }
 
@@ -77,6 +79,15 @@ namespace Service
             }
 
             logger.LogInformation("Patient {PatientId} booked slot {SlotId}", patientId, slotId);
+
+            try
+            {
+                await notificationService.NotifyBookingCreatedAsync(booking);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Booking {BookingId} succeeded but the notification failed to send", booking.Id);
+            }
 
             var bookingDTO = new BookingDTO
             {
@@ -200,6 +211,15 @@ namespace Service
             }
 
             logger.LogInformation("Patient {PatientId} cancelled booking {BookingId}", patientId, bookingId);
+
+            try
+            {
+                await notificationService.NotifyBookingCancelledAsync(booking, "Patient");
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Booking {BookingId} was cancelled but the notification failed to send", bookingId);
+            }
 
             return new ResponseModel<Booking> { Success = true, Message = "Booking canceled", Data = booking };
         }

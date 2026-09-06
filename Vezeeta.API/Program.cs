@@ -71,6 +71,7 @@ namespace Vezeeta.API
             builder.Services.AddTransient<IPatientService, PatientService>();
             builder.Services.AddTransient<IImageService, ImageService>();
             builder.Services.AddTransient<IReviewService, ReviewService>();
+            builder.Services.AddTransient<INotificationService, NotificationService>();
             builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
             builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
