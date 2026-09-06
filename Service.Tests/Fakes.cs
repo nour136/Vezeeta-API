@@ -1,5 +1,6 @@
 using Domain.Models;
 using Domain.Repositories;
+using Domain.Services;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -43,6 +44,37 @@ namespace Service.Tests
         {
             Items.Remove(entity);
             return entity;
+        }
+    }
+
+    // No-op by default; records what was "sent" so a test can assert on it if needed
+    // (e.g. Assert.Contains("Created", fake.Sent)).
+    public class FakeNotificationService : INotificationService
+    {
+        public List<string> Sent { get; } = new();
+
+        public Task NotifyBookingCreatedAsync(Booking booking)
+        {
+            Sent.Add("Created");
+            return Task.CompletedTask;
+        }
+
+        public Task NotifyBookingConfirmedAsync(Booking booking)
+        {
+            Sent.Add("Confirmed");
+            return Task.CompletedTask;
+        }
+
+        public Task NotifyBookingCancelledAsync(Booking booking, string cancelledByRole)
+        {
+            Sent.Add($"Cancelled:{cancelledByRole}");
+            return Task.CompletedTask;
+        }
+
+        public Task NotifyBookingCompletedAsync(Booking booking)
+        {
+            Sent.Add("Completed");
+            return Task.CompletedTask;
         }
     }
 

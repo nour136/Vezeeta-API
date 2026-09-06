@@ -40,7 +40,7 @@ namespace Service.Tests
 
             var imageServiceMock = new Mock<IImageService>();
 
-            var service = new PatientService(uow, mapperMock.Object, imageServiceMock.Object, NullLogger<PatientService>.Instance);
+            var service = new PatientService(uow, mapperMock.Object, imageServiceMock.Object, new FakeNotificationService(), NullLogger<PatientService>.Instance);
             return (service, uow);
         }
 
