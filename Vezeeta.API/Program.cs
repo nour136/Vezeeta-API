@@ -1,5 +1,6 @@
 using Domain;
 using Domain.Models;
+using Hangfire;
 using Domain.Repositories;
 using Domain.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -9,6 +10,7 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Repository;
 using Service;
+using Service.Jobs;
 using System.Text;
 using System.Text.Json.Serialization;
 using Vezeeta.API.Middlewares;
@@ -73,6 +75,17 @@ namespace Vezeeta.API
             builder.Services.AddTransient<IReviewService, ReviewService>();
             builder.Services.AddTransient<INotificationService, NotificationService>();
             builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+
+            // Hangfire needs its own storage - reusing the same SQL Server database is simplest
+            // for this project. It creates its own [HangFire].* tables on first run, separate
+            // from EF Core's own migrations.
+            builder.Services.AddHangfire(config => config
+                .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
+                .UseSimpleAssemblyNameTypeSerializer()
+                .UseRecommendedSerializerSettings()
+                .UseSqlServerStorage(builder.Configuration.GetConnectionString("VezeetaDB")));
+
+            builder.Services.AddHangfireServer();
             builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
 
@@ -123,6 +136,20 @@ namespace Vezeeta.API
 
 
             app.MapControllers();
+
+            // Dashboard is Development-only - see HangfireDashboardAuthFilter for why.
+            app.UseHangfireDashboard("/hangfire", new DashboardOptions
+            {
+                Authorization = new[] { new HangfireDashboardAuthFilter(app.Environment) }
+            });
+
+            // Runs hourly; ReminderJob itself decides which bookings are actually due
+            // (Confirmed, starting within 24 hours, not yet reminded) rather than the
+            // schedule needing to be precisely timed.
+            RecurringJob.AddOrUpdate<ReminderJob>(
+                "appointment-reminders",
+                job => job.SendDueRemindersAsync(),
+                Cron.Hourly);
 
             // Apply any pending EF Core migrations automatically so a fresh database -
             // including a brand new Docker container - ends up with the correct schema
