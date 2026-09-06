@@ -76,6 +76,12 @@ namespace Service.Tests
             Sent.Add("Completed");
             return Task.CompletedTask;
         }
+
+        public Task NotifyBookingReminderAsync(Booking booking)
+        {
+            Sent.Add("Reminder");
+            return Task.CompletedTask;
+        }
     }
 
     public class TestUnitOfWork : IUnitOfWork

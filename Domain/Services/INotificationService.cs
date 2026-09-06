@@ -9,5 +9,6 @@ namespace Domain.Services
         Task NotifyBookingConfirmedAsync(Booking booking);
         Task NotifyBookingCancelledAsync(Booking booking, string cancelledByRole);
         Task NotifyBookingCompletedAsync(Booking booking);
+        Task NotifyBookingReminderAsync(Booking booking);
     }
 }

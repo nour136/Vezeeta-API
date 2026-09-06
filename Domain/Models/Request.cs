@@ -1,4 +1,4 @@
-﻿using Domain.Enums;
+using Domain.Enums;
 
 namespace Domain.Models
 {
@@ -7,6 +7,7 @@ namespace Domain.Models
         public int Id { get; set; }
         public RequestState RequestState { get; set; }
         public bool IsDiscountUsed { get; set; }
+        public bool IsReminded { get; set; }
 
 
         // Navigation property

@@ -85,6 +85,20 @@ namespace Service
         private static string FormatWhen(Booking booking) =>
             $"{booking.Slot.Date:yyyy-MM-dd} at {booking.Slot.Time:HH:mm}";
 
+        public Task NotifyBookingReminderAsync(Booking booking)
+        {
+            var doctor = booking.Slot.Doctor;
+            var patient = booking.Patient;
+            var when = FormatWhen(booking);
+
+            return SendToBothAsync(
+                patient, doctor,
+                patientSubject: "Appointment reminder",
+                patientBody: $"Reminder: your appointment with Dr. {doctor.FirstName} {doctor.LastName} is on {when} (within 24 hours).",
+                doctorSubject: "Upcoming appointment reminder",
+                doctorBody: $"Reminder: you have an appointment with {patient.FirstName} {patient.LastName} on {when} (within 24 hours).");
+        }
+
         private async Task SendToBothAsync(
             ApplicationUser patient, ApplicationUser doctor,
             string patientSubject, string patientBody,
