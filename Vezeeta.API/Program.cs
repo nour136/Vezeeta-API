@@ -86,6 +86,15 @@ namespace Vezeeta.API
                 .UseSqlServerStorage(builder.Configuration.GetConnectionString("VezeetaDB")));
 
             builder.Services.AddHangfireServer();
+
+            // Redis-backed IDistributedCache. Only used where a read is genuinely safe to
+            // cache - see AdminDoctorService.GetAllSpecializationsAsync for the one place
+            // that's actually wired up, and why.
+            builder.Services.AddStackExchangeRedisCache(options =>
+            {
+                options.Configuration = builder.Configuration.GetConnectionString("Redis");
+                options.InstanceName = "Vezeeta:";
+            });
             builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
 

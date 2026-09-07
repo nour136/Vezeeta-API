@@ -1,4 +1,3 @@
-
 services:
   vezeeta.api:
     build:
@@ -15,9 +14,12 @@ services:
       - JWT__Audience=${JWT_AUDIENCE:-SecureApiUser}
       - ADMIN__EMAIL=${ADMIN_EMAIL}
       - ADMIN__PASSWORD=${ADMIN_PASSWORD}
+      - ConnectionStrings__Redis=redis:6379
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_started
     networks:
       - vezeeta-network
 
@@ -37,6 +39,14 @@ services:
       timeout: 5s
       retries: 10
       start_period: 20s
+    networks:
+      - vezeeta-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: vezeeta-redis
+    ports:
+      - "6379:6379"
     networks:
       - vezeeta-network
 
