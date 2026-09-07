@@ -1,5 +1,6 @@
 using AutoMapper;
 using Domain.DTOs.AdminDTOs;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
 using Domain.Models;
 using Domain;
@@ -12,6 +13,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace Service
@@ -21,18 +23,37 @@ namespace Service
         private readonly IUnitOfWork unitOfWork;
         private readonly IMapper mapper;
         private readonly IImageService imageService;
+        private readonly IDistributedCache cache;
         private readonly ILogger<AdminDoctorService> logger;
 
-        public AdminDoctorService(IUnitOfWork unitOfWork, IMapper mapper, IImageService imageService, ILogger<AdminDoctorService> logger)
+        public AdminDoctorService(IUnitOfWork unitOfWork, IMapper mapper, IImageService imageService, IDistributedCache cache, ILogger<AdminDoctorService> logger)
         {
             this.unitOfWork = unitOfWork;
             this.mapper = mapper;
             this.imageService = imageService;
+            this.cache = cache;
             this.logger = logger;
         }
 
         public async Task<ResponseModel<IEnumerable<SpecializationDTO>>> GetAllSpecializationsAsync(string search = "", int page = 1, int pageSize = 5)
         {
+            // Specializations have no create/update/delete endpoint anywhere in this API -
+            // they're reference data, seeded and edited outside the app. That makes the
+            // unfiltered listing a genuinely safe read to cache: no invalidation logic is
+            // needed, just a TTL as a safety net for the rare out-of-band DB edit. A free-text
+            // search isn't cached - too many unique key variants for the reuse to be worth it.
+            var cacheKey = string.IsNullOrEmpty(search) ? $"specializations:page:{page}:size:{pageSize}" : null;
+
+            if (cacheKey != null)
+            {
+                var cached = await cache.GetStringAsync(cacheKey);
+                if (cached != null)
+                {
+                    logger.LogInformation("Specializations page {Page} served from cache", page);
+                    return JsonSerializer.Deserialize<ResponseModel<IEnumerable<SpecializationDTO>>>(cached)!;
+                }
+            }
+
             IEnumerable<Specialization> specializations = new List<Specialization>();
 
             try
@@ -58,7 +79,24 @@ namespace Service
                 Previous = page - 1
             };
 
-            return new ResponseModel<IEnumerable<SpecializationDTO>> { MetaData = meta, Success = true, Message = "Specializations retrieved.", Data = specializationsDTO };
+            var response = new ResponseModel<IEnumerable<SpecializationDTO>> { MetaData = meta, Success = true, Message = "Specializations retrieved.", Data = specializationsDTO };
+
+            if (cacheKey != null)
+            {
+                try
+                {
+                    await cache.SetStringAsync(cacheKey, JsonSerializer.Serialize(response),
+                        new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(30) });
+                }
+                catch (Exception ex)
+                {
+                    // Redis being briefly unavailable shouldn't turn a successful DB read into
+                    // a failed response - the endpoint still works, it just skips the cache.
+                    logger.LogWarning(ex, "Failed to cache specializations page {Page}", page);
+                }
+            }
+
+            return response;
         }
 
         public async Task<ResponseModel<IEnumerable<DoctorDTO>>> GetAllDoctorsAsync(string role, string search, int page = 1, int pageSize = 5)
